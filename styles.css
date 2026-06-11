@@ -199,6 +199,22 @@ input {
   font-weight: 700;
 }
 
+.brand span:last-child,
+.eyebrow,
+.hero-strip small,
+.card-meta,
+.resource-card h3,
+.dataset-card h3,
+.flow-line h3,
+.tag,
+.card-links,
+.dataset-card .data-type,
+.dataset-card .data-size,
+.site-footer,
+.search-box input::placeholder {
+  font-style: italic;
+}
+
 .hero h1 {
   margin: 0;
   font-size: 5.4rem;
