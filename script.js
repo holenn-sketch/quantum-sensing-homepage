@@ -1,4 +1,10 @@
 // EDITABLE CONTENT START: replace these sample entries with your papers and datasets.
+const researcher = {
+  name: "Holenn",
+  // Fill in your ORCID iD, for example: "0000-0002-1825-0097".
+  orcid: "",
+};
+
 const papers = [
   {
     title: "Simplified non-Hermitian sensing beyond exceptional-point amplification",
@@ -123,6 +129,7 @@ const searchInput = document.querySelector("[data-search]");
 const filterGroup = document.querySelector("[data-filter-group]");
 const paperGrid = document.querySelector("[data-paper-grid]");
 const datasetGrid = document.querySelector("[data-dataset-grid]");
+const orcidProfile = document.querySelector("[data-orcid-profile]");
 const paperCount = document.querySelector("[data-paper-count]");
 const datasetCount = document.querySelector("[data-dataset-count]");
 
@@ -162,6 +169,43 @@ function createLinks(links) {
     .join("");
 }
 
+function normalizeOrcid(orcid) {
+  return orcid.trim();
+}
+
+function isConfiguredOrcid(orcid) {
+  return /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/i.test(normalizeOrcid(orcid));
+}
+
+function getOrcidUrl(orcid) {
+  return `https://orcid.org/${normalizeOrcid(orcid)}`;
+}
+
+function createOrcidLink({ compact = false } = {}) {
+  if (!isConfiguredOrcid(researcher.orcid)) {
+    return '<span class="orcid-link orcid-link-muted">ORCID待补</span>';
+  }
+
+  const orcid = normalizeOrcid(researcher.orcid);
+  const label = compact ? "ORCID" : `${researcher.name} · ${orcid}`;
+  return `
+    <a
+      class="orcid-link"
+      href="${getOrcidUrl(orcid)}"
+      target="_blank"
+      rel="noreferrer"
+      aria-label="View ORCID record - ${orcid}"
+    >
+      <span class="orcid-dot" aria-hidden="true">iD</span>
+      ${label}
+    </a>
+  `;
+}
+
+function renderOrcidProfile() {
+  orcidProfile.innerHTML = createOrcidLink();
+}
+
 function paperMatches(paper) {
   const text = [paper.title, paper.venue, paper.year, paper.summary, ...paper.tags]
     .join(" ")
@@ -194,6 +238,7 @@ function renderPapers() {
             ${paper.tags.map((tag) => `<span class="tag">${tag}</span>`).join("")}
           </div>
           <div class="card-links">${createLinks(paper.links)}</div>
+          <div class="paper-identity">${createOrcidLink({ compact: true })}</div>
         </article>
       `
     )
@@ -408,6 +453,7 @@ function initFieldCanvas() {
 }
 
 initTheme();
+renderOrcidProfile();
 renderPapers();
 renderDatasets();
 initInteractions();
