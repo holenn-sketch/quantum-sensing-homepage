@@ -1,8 +1,7 @@
 // EDITABLE CONTENT START: replace these sample entries with your papers and datasets.
 const researcher = {
-  name: "Holenn",
   // Fill in your ORCID iD, for example: "0000-0002-1825-0097".
-  orcid: "",
+  orcid: "0009-0001-6203-1879",
 };
 
 const papers = [
@@ -187,7 +186,7 @@ function createOrcidLink({ compact = false } = {}) {
   }
 
   const orcid = normalizeOrcid(researcher.orcid);
-  const label = compact ? "ORCID" : `${researcher.name} · ${orcid}`;
+  const label = compact ? "ORCID" : orcid;
   return `
     <a
       class="orcid-link"
