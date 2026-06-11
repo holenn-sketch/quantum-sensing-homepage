@@ -4,12 +4,16 @@ const researcher = {
   orcid: "0009-0001-6203-1879",
 };
 
-const papers = [
+const firstAuthorDois = ["10.1038/s42005-026-02561-3"];
+
+const papersFallback = [
   {
     title: "An exceptional-point wireless sensor featuring non-reciprocal and electronic-tunable coupling",
     venue: "Applied Physics Letters",
     year: "2026",
     category: "non-hermitian",
+    doi: "10.1063/5.0333910",
+    isFirstAuthor: false,
     tags: ["exceptional point", "wireless sensor", "non-reciprocal coupling"],
     summary:
       "基于奇异点机制的无线传感研究，突出非互易与电子可调耦合对传感响应的调控作用。",
@@ -23,7 +27,9 @@ const papers = [
     venue: "Communications Physics",
     year: "2026",
     category: "higher-order",
-    tags: ["First author", "higher-order EP", "frequency-dependent gain", "non-Hermitian physics"],
+    doi: "10.1038/s42005-026-02561-3",
+    isFirstAuthor: true,
+    tags: ["higher-order EP", "frequency-dependent gain", "non-Hermitian physics"],
     summary:
       "利用频率依赖增益观测高阶奇异点，展示非厄米系统中高阶退化结构的实验可达性。",
     links: [
@@ -36,6 +42,8 @@ const papers = [
     venue: "IEEE Microwave and Wireless Technology Letters",
     year: "2025",
     category: "non-hermitian",
+    doi: "10.1109/LMWT.2025.3642799",
+    isFirstAuthor: false,
     tags: ["pseudo-Hermitian", "exceptional point", "heterogeneous coupling"],
     summary:
       "面向异质耦合无线传感系统的伪厄米奇异点方案，强调结构耦合与传感性能之间的关系。",
@@ -45,6 +53,8 @@ const papers = [
     ],
   },
 ];
+
+let papers = [...papersFallback];
 
 const datasets = [
   {
@@ -161,12 +171,121 @@ function createOrcidLink({ compact = false } = {}) {
   `;
 }
 
+function normalizeDoi(doi) {
+  return String(doi || "")
+    .trim()
+    .replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")
+    .toLowerCase();
+}
+
+function getWorkValue(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value.value || "";
+}
+
+function getWorkYear(summary) {
+  return (
+    getWorkValue(summary?.["publication-date"]?.year) ||
+    getWorkValue(summary?.["created-date"]?.value) ||
+    "n.d."
+  );
+}
+
+function getWorkDoi(summary) {
+  const ids = summary?.["external-ids"]?.["external-id"] || [];
+  const doiItem = ids.find((item) => item?.["external-id-type"]?.toLowerCase() === "doi");
+  return normalizeDoi(doiItem?.["external-id-value"] || doiItem?.["external-id-url"]?.value);
+}
+
+function classifyWork(title) {
+  const text = title.toLowerCase();
+  if (text.includes("higher-order")) return "higher-order";
+  if (text.includes("quantum")) return "quantum";
+  if (text.includes("exceptional") || text.includes("hermitian")) return "non-hermitian";
+  return "non-hermitian";
+}
+
+function createWorkTags(title, venue) {
+  const text = `${title} ${venue}`.toLowerCase();
+  const tags = [];
+  if (text.includes("higher-order")) tags.push("higher-order EP");
+  if (text.includes("pseudo-hermitian")) tags.push("pseudo-Hermitian");
+  if (text.includes("exceptional")) tags.push("exceptional point");
+  if (text.includes("wireless")) tags.push("wireless sensor");
+  if (text.includes("gain")) tags.push("frequency-dependent gain");
+  if (text.includes("coupling")) tags.push("coupling");
+  return [...new Set(tags)];
+}
+
+function createWorkSummary(title) {
+  const text = title.toLowerCase();
+  if (text.includes("higher-order")) {
+    return "ORCID 公开记录同步论文：围绕高阶奇异点与频率依赖增益展开。";
+  }
+  if (text.includes("pseudo-hermitian")) {
+    return "ORCID 公开记录同步论文：围绕伪厄米奇异点、异质耦合与无线传感展开。";
+  }
+  return "ORCID 公开记录同步论文：围绕奇异点机制、非厄米传感与无线传感展开。";
+}
+
+function mapOrcidWork(summary) {
+  const title = getWorkValue(summary?.title?.title);
+  const venue = getWorkValue(summary?.["journal-title"]) || "Journal article";
+  const year = getWorkYear(summary);
+  const doi = getWorkDoi(summary);
+  const isFirstAuthor = firstAuthorDois.includes(normalizeDoi(doi));
+  const category = classifyWork(title);
+  return {
+    title,
+    venue,
+    year,
+    category,
+    doi,
+    isFirstAuthor,
+    tags: createWorkTags(title, venue),
+    summary: createWorkSummary(title),
+    links: [
+      { label: "PDF", url: "" },
+      { label: "DOI", url: doi ? `https://doi.org/${doi}` : "" },
+    ],
+  };
+}
+
+function getOrcidWorkSummaries(data) {
+  return (data?.group || [])
+    .flatMap((group) => group?.["work-summary"] || [])
+    .filter((summary) => getWorkValue(summary?.title?.title));
+}
+
+async function syncPapersFromOrcid() {
+  if (!isConfiguredOrcid(researcher.orcid)) return;
+
+  try {
+    const response = await fetch(`https://pub.orcid.org/v3.0/${normalizeOrcid(researcher.orcid)}/works`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) throw new Error(`ORCID request failed: ${response.status}`);
+    const data = await response.json();
+    const livePapers = getOrcidWorkSummaries(data).map(mapOrcidWork);
+    if (!livePapers.length) return;
+    papers = livePapers.sort((a, b) => String(b.year).localeCompare(String(a.year)));
+    renderPapers();
+  } catch (error) {
+    console.info("Using local paper fallback because ORCID sync failed.", error);
+  }
+}
+
 function paperMatches(paper) {
-  const text = [paper.title, paper.venue, paper.year, paper.summary, ...paper.tags]
+  const roleText = paper.isFirstAuthor ? "first author 第一作者" : "";
+  const text = [paper.title, paper.venue, paper.year, paper.summary, roleText, ...paper.tags]
     .join(" ")
     .toLowerCase();
   const matchesSearch = !searchTerm || text.includes(searchTerm);
-  const matchesFilter = activeFilter === "all" || paper.category === activeFilter;
+  const matchesFilter =
+    activeFilter === "all" ||
+    paper.category === activeFilter ||
+    (activeFilter === "first-author" && paper.isFirstAuthor);
   return matchesSearch && matchesFilter;
 }
 
@@ -189,6 +308,11 @@ function renderPapers() {
           </div>
           <h3>${paper.title}</h3>
           <p>${paper.summary}</p>
+          ${
+            paper.isFirstAuthor
+              ? '<div class="paper-badges"><span class="role-badge">第一作者</span></div>'
+              : ""
+          }
           <div class="tag-row">
             ${paper.tags.map((tag) => `<span class="tag">${tag}</span>`).join("")}
           </div>
@@ -409,6 +533,7 @@ function initFieldCanvas() {
 
 initTheme();
 renderPapers();
+syncPapersFromOrcid();
 renderDatasets();
 initInteractions();
 initReveal();

@@ -427,6 +427,14 @@ input {
   transform: translateY(-1px);
 }
 
+.segmented [data-filter="first-author"] {
+  border-color: rgba(166, 206, 57, 0.46);
+}
+
+.segmented [data-filter="first-author"].is-active {
+  background: rgba(166, 206, 57, 0.18);
+}
+
 .resource-grid,
 .dataset-river {
   width: min(1120px, 100%);
@@ -504,6 +512,26 @@ input {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: auto;
+}
+
+.paper-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid rgba(166, 206, 57, 0.72);
+  border-radius: 8px;
+  background: rgba(166, 206, 57, 0.16);
+  color: var(--ink);
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .tag {
