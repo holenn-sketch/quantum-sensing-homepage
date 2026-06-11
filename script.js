@@ -6,6 +6,12 @@ const researcher = {
 
 const firstAuthorDois = ["10.1038/s42005-026-02561-3"];
 
+const titleTranslations = {
+  "10.1063/5.0333910": "一种具有非互易与电子可调耦合的奇异点无线传感器",
+  "10.1038/s42005-026-02561-3": "利用频率依赖增益观测高阶奇异点",
+  "10.1109/lmwt.2025.3642799": "基于伪厄米奇异点的异质耦合无线传感系统",
+};
+
 const papersFallback = [
   {
     title: "An exceptional-point wireless sensor featuring non-reciprocal and electronic-tunable coupling",
@@ -15,8 +21,7 @@ const papersFallback = [
     doi: "10.1063/5.0333910",
     isFirstAuthor: false,
     tags: ["exceptional point", "wireless sensor", "non-reciprocal coupling"],
-    summary:
-      "基于奇异点机制的无线传感研究，突出非互易与电子可调耦合对传感响应的调控作用。",
+    summary: "一种具有非互易与电子可调耦合的奇异点无线传感器",
     links: [
       { label: "PDF", url: "" },
       { label: "DOI", url: "https://doi.org/10.1063/5.0333910" },
@@ -30,8 +35,7 @@ const papersFallback = [
     doi: "10.1038/s42005-026-02561-3",
     isFirstAuthor: true,
     tags: ["higher-order EP", "frequency-dependent gain", "non-Hermitian physics"],
-    summary:
-      "利用频率依赖增益观测高阶奇异点，展示非厄米系统中高阶退化结构的实验可达性。",
+    summary: "利用频率依赖增益观测高阶奇异点",
     links: [
       { label: "PDF", url: "" },
       { label: "DOI", url: "https://doi.org/10.1038/s42005-026-02561-3" },
@@ -45,8 +49,7 @@ const papersFallback = [
     doi: "10.1109/LMWT.2025.3642799",
     isFirstAuthor: false,
     tags: ["pseudo-Hermitian", "exceptional point", "heterogeneous coupling"],
-    summary:
-      "面向异质耦合无线传感系统的伪厄米奇异点方案，强调结构耦合与传感性能之间的关系。",
+    summary: "基于伪厄米奇异点的异质耦合无线传感系统",
     links: [
       { label: "PDF", url: "" },
       { label: "DOI", url: "https://doi.org/10.1109/LMWT.2025.3642799" },
@@ -218,15 +221,18 @@ function createWorkTags(title, venue) {
   return [...new Set(tags)];
 }
 
-function createWorkSummary(title) {
+function createWorkSummary(title, doi) {
+  const translatedTitle = titleTranslations[normalizeDoi(doi)];
+  if (translatedTitle) return translatedTitle;
+
   const text = title.toLowerCase();
   if (text.includes("higher-order")) {
-    return "ORCID 公开记录同步论文：围绕高阶奇异点与频率依赖增益展开。";
+    return "利用频率依赖机制研究高阶奇异点";
   }
   if (text.includes("pseudo-hermitian")) {
-    return "ORCID 公开记录同步论文：围绕伪厄米奇异点、异质耦合与无线传感展开。";
+    return "基于伪厄米机制的奇异点无线传感系统";
   }
-  return "ORCID 公开记录同步论文：围绕奇异点机制、非厄米传感与无线传感展开。";
+  return "非厄米奇异点传感相关论文";
 }
 
 function mapOrcidWork(summary) {
@@ -244,7 +250,7 @@ function mapOrcidWork(summary) {
     doi,
     isFirstAuthor,
     tags: createWorkTags(title, venue),
-    summary: createWorkSummary(title),
+    summary: createWorkSummary(title, doi),
     links: [
       { label: "PDF", url: "" },
       { label: "DOI", url: doi ? `https://doi.org/${doi}` : "" },
