@@ -23,7 +23,7 @@ const papers = [
     venue: "Communications Physics",
     year: "2026",
     category: "higher-order",
-    tags: ["higher-order EP", "frequency-dependent gain", "non-Hermitian physics"],
+    tags: ["First author", "higher-order EP", "frequency-dependent gain", "non-Hermitian physics"],
     summary:
       "利用频率依赖增益观测高阶奇异点，展示非厄米系统中高阶退化结构的实验可达性。",
     links: [
