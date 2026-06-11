@@ -6,81 +6,42 @@ const researcher = {
 
 const papers = [
   {
-    title: "Simplified non-Hermitian sensing beyond exceptional-point amplification",
-    venue: "Manuscript",
+    title: "An exceptional-point wireless sensor featuring non-reciprocal and electronic-tunable coupling",
+    venue: "Applied Physics Letters",
     year: "2026",
     category: "non-hermitian",
-    tags: ["non-Hermitian", "EP", "noise floor"],
+    tags: ["exceptional point", "wireless sensor", "non-reciprocal coupling"],
     summary:
-      "围绕非厄米传感的简化路线，比较本征值劈裂、线宽、噪声放大和实际信噪比之间的边界。",
+      "基于奇异点机制的无线传感研究，突出非互易与电子可调耦合对传感响应的调控作用。",
     links: [
       { label: "PDF", url: "" },
-      { label: "DOI", url: "" },
+      { label: "DOI", url: "https://doi.org/10.1063/5.0333910" },
     ],
   },
   {
-    title: "Higher-order exceptional surfaces for robust parameter estimation",
-    venue: "Preprint",
+    title: "Observation of higher-order exceptional points using frequency-dependent gain",
+    venue: "Communications Physics",
     year: "2026",
     category: "higher-order",
-    tags: ["higher-order", "exceptional surface", "estimation"],
+    tags: ["higher-order EP", "frequency-dependent gain", "non-Hermitian physics"],
     summary:
-      "以高阶奇异点和奇异面为核心，整理灵敏度阶数、扰动方向和稳定工作区间的关系。",
+      "利用频率依赖增益观测高阶奇异点，展示非厄米系统中高阶退化结构的实验可达性。",
     links: [
       { label: "PDF", url: "" },
-      { label: "Code", url: "" },
+      { label: "DOI", url: "https://doi.org/10.1038/s42005-026-02561-3" },
     ],
   },
   {
-    title: "Quantum Fisher information in dissipative sensing channels",
-    venue: "Notes",
-    year: "2025",
-    category: "quantum",
-    tags: ["QFI", "dissipation", "quantum sensing"],
-    summary:
-      "从量子 Fisher 信息出发评估耗散通道中的可达精度，并和经典谱响应做并列比较。",
-    links: [
-      { label: "PDF", url: "" },
-      { label: "Data", url: "" },
-    ],
-  },
-  {
-    title: "Noise-aware calibration for coupled-mode sensor arrays",
-    venue: "Dataset paper",
+    title: "Pseudo-Hermitian Exceptional-Point-Based Wireless Sensing System With Heterogeneous Coupling",
+    venue: "IEEE Microwave and Wireless Technology Letters",
     year: "2025",
     category: "non-hermitian",
-    tags: ["coupled modes", "calibration", "sensor array"],
+    tags: ["pseudo-Hermitian", "exceptional point", "heterogeneous coupling"],
     summary:
-      "记录耦合模阵列在不同耗散、失谐和外部扰动下的校准流程，聚焦实验可重复性。",
+      "面向异质耦合无线传感系统的伪厄米奇异点方案，强调结构耦合与传感性能之间的关系。",
     links: [
       { label: "PDF", url: "" },
-      { label: "Dataset", url: "" },
-    ],
-  },
-  {
-    title: "Minimal models for non-Hermitian parameter sensing",
-    venue: "Working draft",
-    year: "2024",
-    category: "non-hermitian",
-    tags: ["minimal model", "two-mode", "sensitivity"],
-    summary:
-      "用最小二模模型剥离非厄米增强的必要条件，便于后续推广到高阶或多模结构。",
-    links: [
-      { label: "PDF", url: "" },
-      { label: "Notes", url: "" },
-    ],
-  },
-  {
-    title: "Benchmarking spectral response under gain-loss imbalance",
-    venue: "Supplement",
-    year: "2024",
-    category: "quantum",
-    tags: ["gain-loss", "benchmark", "spectral response"],
-    summary:
-      "统一比较增益-损耗不平衡下的谱响应、拟合残差和参数恢复误差。",
-    links: [
-      { label: "PDF", url: "" },
-      { label: "Data", url: "" },
+      { label: "DOI", url: "https://doi.org/10.1109/LMWT.2025.3642799" },
     ],
   },
 ];
