@@ -89,7 +89,6 @@ const searchInput = document.querySelector("[data-search]");
 const filterGroup = document.querySelector("[data-filter-group]");
 const paperGrid = document.querySelector("[data-paper-grid]");
 const datasetGrid = document.querySelector("[data-dataset-grid]");
-const orcidProfile = document.querySelector("[data-orcid-profile]");
 const paperCount = document.querySelector("[data-paper-count]");
 const datasetCount = document.querySelector("[data-dataset-count]");
 
@@ -160,10 +159,6 @@ function createOrcidLink({ compact = false } = {}) {
       ${label}
     </a>
   `;
-}
-
-function renderOrcidProfile() {
-  orcidProfile.innerHTML = createOrcidLink();
 }
 
 function paperMatches(paper) {
@@ -413,7 +408,6 @@ function initFieldCanvas() {
 }
 
 initTheme();
-renderOrcidProfile();
 renderPapers();
 renderDatasets();
 initInteractions();
