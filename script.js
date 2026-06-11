@@ -57,7 +57,8 @@ const papersFallback = [
   },
 ];
 
-let papers = [...papersFallback];
+let papers = [];
+let isPaperLoading = true;
 
 const datasets = [
   {
@@ -265,7 +266,7 @@ function getOrcidWorkSummaries(data) {
 }
 
 async function syncPapersFromOrcid() {
-  if (!isConfiguredOrcid(researcher.orcid)) return;
+  if (!isConfiguredOrcid(researcher.orcid)) return false;
 
   try {
     const response = await fetch(`https://pub.orcid.org/v3.0/${normalizeOrcid(researcher.orcid)}/works`, {
@@ -274,12 +275,23 @@ async function syncPapersFromOrcid() {
     if (!response.ok) throw new Error(`ORCID request failed: ${response.status}`);
     const data = await response.json();
     const livePapers = getOrcidWorkSummaries(data).map(mapOrcidWork);
-    if (!livePapers.length) return;
+    if (!livePapers.length) return false;
     papers = livePapers.sort((a, b) => String(b.year).localeCompare(String(a.year)));
-    renderPapers();
+    return true;
   } catch (error) {
     console.info("Using local paper fallback because ORCID sync failed.", error);
+    return false;
   }
+}
+
+function renderPapersLoading() {
+  paperCount.textContent = "…";
+  paperGrid.innerHTML = `
+    <div class="loading-state">
+      <span aria-hidden="true"></span>
+      正在同步 ORCID 公开论文
+    </div>
+  `;
 }
 
 function paperMatches(paper) {
@@ -296,6 +308,11 @@ function paperMatches(paper) {
 }
 
 function renderPapers() {
+  if (isPaperLoading) {
+    renderPapersLoading();
+    return;
+  }
+
   const visiblePapers = papers.filter(paperMatches);
   paperCount.textContent = String(papers.length);
 
@@ -334,6 +351,16 @@ function renderPapers() {
       .querySelectorAll(".resource-card")
       .forEach((card) => card.classList.add("is-visible"));
   });
+}
+
+async function initializePapers() {
+  renderPapersLoading();
+  const hasLivePapers = await syncPapersFromOrcid();
+  if (!hasLivePapers) {
+    papers = [...papersFallback];
+  }
+  isPaperLoading = false;
+  renderPapers();
 }
 
 function renderDatasets() {
@@ -538,8 +565,7 @@ function initFieldCanvas() {
 }
 
 initTheme();
-renderPapers();
-syncPapersFromOrcid();
+initializePapers();
 renderDatasets();
 initInteractions();
 initReveal();
