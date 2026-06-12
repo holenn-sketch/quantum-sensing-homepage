@@ -150,31 +150,6 @@ function isConfiguredOrcid(orcid) {
   return /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/i.test(normalizeOrcid(orcid));
 }
 
-function getOrcidUrl(orcid) {
-  return `https://orcid.org/${normalizeOrcid(orcid)}`;
-}
-
-function createOrcidLink({ compact = false } = {}) {
-  if (!isConfiguredOrcid(researcher.orcid)) {
-    return '<span class="orcid-link orcid-link-muted">ORCID待补</span>';
-  }
-
-  const orcid = normalizeOrcid(researcher.orcid);
-  const label = compact ? "ORCID" : orcid;
-  return `
-    <a
-      class="orcid-link"
-      href="${getOrcidUrl(orcid)}"
-      target="_blank"
-      rel="noreferrer"
-      aria-label="View ORCID record - ${orcid}"
-    >
-      <span class="orcid-dot" aria-hidden="true">iD</span>
-      ${label}
-    </a>
-  `;
-}
-
 function normalizeDoi(doi) {
   return String(doi || "")
     .trim()
@@ -340,7 +315,6 @@ function renderPapers() {
             ${paper.tags.map((tag) => `<span class="tag">${tag}</span>`).join("")}
           </div>
           <div class="card-links">${createLinks(paper.links)}</div>
-          <div class="paper-identity">${createOrcidLink({ compact: true })}</div>
         </article>
       `
     )
