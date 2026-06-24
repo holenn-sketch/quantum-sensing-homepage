@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="16" fill="#101211"/>
+  <circle cx="32" cy="32" r="4.6" fill="#f6f3ea"/>
+  <ellipse
+    cx="32"
+    cy="32"
+    rx="22"
+    ry="9"
+    fill="none"
+    stroke="#4cc7bd"
+    stroke-width="4"
+    transform="rotate(-27 32 32)"
+  />
+  <ellipse
+    cx="32"
+    cy="32"
+    rx="23"
+    ry="10"
+    fill="none"
+    stroke="#d7ad48"
+    stroke-width="3"
+    stroke-linecap="round"
+    stroke-dasharray="34 16"
+    transform="rotate(24 32 32)"
+  />
+  <path
+    d="M18 42c7-16 21-24 28-20"
+    fill="none"
+    stroke="#ff8275"
+    stroke-width="3"
+    stroke-linecap="round"
+    opacity=".9"
+  />
+</svg>
