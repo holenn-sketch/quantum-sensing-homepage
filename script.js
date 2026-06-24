@@ -698,16 +698,20 @@ function initFieldCanvas() {
 
   const ctx = canvas.getContext("2d");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const pointer = { x: 0, y: 0, active: false };
   let width = 0;
   let height = 0;
   let dpr = 1;
   let frame = 0;
   let rafId = 0;
+  let resizeRafId = 0;
+  let lastDrawTime = 0;
+  let isRunning = false;
+  let isInView = true;
+  const targetFrameMs = 1000 / 24;
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
-    dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    dpr = 1;
     width = Math.floor(rect.width);
     height = Math.floor(rect.height);
     canvas.width = Math.floor(width * dpr);
@@ -736,9 +740,9 @@ function initFieldCanvas() {
     const cool = theme === "dark" ? "rgba(76, 199, 189, 0.42)" : "rgba(0, 127, 120, 0.36)";
     const hot = theme === "dark" ? "rgba(255, 130, 117, 0.34)" : "rgba(217, 84, 69, 0.28)";
     const ink = theme === "dark" ? "rgba(246, 243, 234, 0.15)" : "rgba(20, 20, 20, 0.12)";
-    const rows = width < 700 ? 9 : 13;
-    const cols = width < 700 ? 36 : 58;
-    const time = frame * 0.008;
+    const rows = width < 700 ? 7 : 10;
+    const cols = width < 700 ? 28 : 42;
+    const time = frame * 0.014;
 
     ctx.lineWidth = 1;
     for (let row = 0; row < rows; row += 1) {
@@ -746,11 +750,9 @@ function initFieldCanvas() {
       ctx.beginPath();
       for (let col = 0; col < cols; col += 1) {
         const x = (width / (cols - 1)) * col;
-        const pull = pointer.active ? (pointer.x - x) / Math.max(width, 1) : 0;
         const wave =
           Math.sin(col * 0.34 + row * 0.72 + time) * 18 +
-          Math.cos(col * 0.18 - time * 1.8) * 9 +
-          pull * 24;
+          Math.cos(col * 0.18 - time * 1.8) * 9;
         const y = yBase + wave;
         if (col === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
@@ -768,7 +770,7 @@ function initFieldCanvas() {
     ctx.strokeStyle = theme === "dark" ? "rgba(215, 173, 72, 0.42)" : "rgba(155, 113, 26, 0.38)";
     ctx.lineWidth = 1.4;
     ctx.beginPath();
-    const loops = 180;
+    const loops = 120;
     for (let i = 0; i <= loops; i += 1) {
       const t = (i / loops) * Math.PI * 2;
       const r = Math.sin(t * 2) * (width < 700 ? 42 : 76);
@@ -781,40 +783,69 @@ function initFieldCanvas() {
     ctx.restore();
   }
 
-  function draw() {
+  function renderFrame() {
     drawBackground();
     drawField();
     drawExceptionalCurve();
     frame += 1;
-    if (!reduceMotion) rafId = requestAnimationFrame(draw);
   }
 
-  canvas.addEventListener(
-    "pointermove",
-    (event) => {
-      const rect = canvas.getBoundingClientRect();
-      pointer.x = event.clientX - rect.left;
-      pointer.y = event.clientY - rect.top;
-      pointer.active = true;
-    },
-    { passive: true }
-  );
+  function draw(timestamp = 0) {
+    if (!isRunning) return;
 
-  canvas.addEventListener("pointerleave", () => {
-    pointer.active = false;
-  });
+    if (!lastDrawTime || timestamp - lastDrawTime >= targetFrameMs) {
+      renderFrame();
+      lastDrawTime = timestamp;
+    }
+
+    rafId = requestAnimationFrame(draw);
+  }
+
+  function startAnimation() {
+    if (reduceMotion || isRunning || document.hidden || !isInView) return;
+    isRunning = true;
+    lastDrawTime = 0;
+    rafId = requestAnimationFrame(draw);
+  }
+
+  function stopAnimation() {
+    isRunning = false;
+    cancelAnimationFrame(rafId);
+  }
+
+  function scheduleResize() {
+    cancelAnimationFrame(resizeRafId);
+    resizeRafId = requestAnimationFrame(() => {
+      resize();
+      renderFrame();
+    });
+  }
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
-      cancelAnimationFrame(rafId);
-    } else if (!reduceMotion) {
-      rafId = requestAnimationFrame(draw);
+      stopAnimation();
+    } else {
+      startAnimation();
     }
   });
 
-  window.addEventListener("resize", resize, { passive: true });
+  if ("IntersectionObserver" in window) {
+    const hero = canvas.closest(".hero") || canvas;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        isInView = entries.some((entry) => entry.isIntersecting);
+        if (isInView) startAnimation();
+        else stopAnimation();
+      },
+      { rootMargin: "120px 0px" }
+    );
+    observer.observe(hero);
+  }
+
+  window.addEventListener("resize", scheduleResize, { passive: true });
   resize();
-  draw();
+  renderFrame();
+  startAnimation();
 }
 
 initTheme();

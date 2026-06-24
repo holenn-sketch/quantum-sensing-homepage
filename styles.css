@@ -90,8 +90,8 @@ input {
   border-radius: 14px;
   background: var(--surface);
   box-shadow: 0 10px 34px rgba(20, 20, 20, 0.08);
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(128%);
+  -webkit-backdrop-filter: blur(16px) saturate(128%);
   transition: background 240ms ease, border-color 240ms ease, transform 240ms ease;
 }
 
@@ -193,6 +193,7 @@ input {
   height: 100%;
   z-index: -2;
   background: var(--bg);
+  pointer-events: none;
 }
 
 .hero::after {
@@ -339,8 +340,8 @@ input {
   border-radius: var(--radius-card);
   overflow: hidden;
   background: var(--surface);
-  backdrop-filter: blur(18px) saturate(132%);
-  -webkit-backdrop-filter: blur(18px) saturate(132%);
+  backdrop-filter: blur(10px) saturate(118%);
+  -webkit-backdrop-filter: blur(10px) saturate(118%);
 }
 
 .hero-strip div {
@@ -367,6 +368,8 @@ input {
 
 .section {
   padding: 96px var(--page-pad);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
 }
 
 .section-quiet {
@@ -495,8 +498,7 @@ input {
   border-radius: var(--radius-card);
   background: var(--surface);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(18px) saturate(125%);
-  -webkit-backdrop-filter: blur(18px) saturate(125%);
+  contain: layout paint;
 }
 
 .resource-card {
