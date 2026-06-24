@@ -94,6 +94,37 @@ const datasets = [
     url: "",
   },
 ];
+
+const latestPapersFallback = [
+  {
+    title: "Quantum simulation of non-Hermitian special functions and dynamics via contour-based matrix decomposition",
+    journal: "Quantum Science and Technology",
+    date: "2026-06-24",
+    doi: "10.1088/2058-9565/ae7b7e",
+    pdfUrl: "https://iopscience.iop.org/article/10.1088/2058-9565/ae7b7e/pdf",
+    innovation:
+      "用轮廓矩阵分解模拟非厄米特殊函数与动力学，为非厄米模型的可实现模拟与参数响应分析提供工具。",
+  },
+  {
+    title:
+      "Three non-Hermitian random matrix universality classes of complex edge statistics: Spacing ratios and distributions",
+    journal: "Journal of Physics A: Mathematical and Theoretical",
+    date: "2026-06-23",
+    doi: "10.1088/1751-8121/ae777d",
+    pdfUrl: "https://iopscience.iop.org/article/10.1088/1751-8121/ae777d/pdf",
+    innovation:
+      "从非厄米随机矩阵边缘统计出发区分三类普适行为，可为噪声、谱统计与奇异点附近响应建模提供理论参照。",
+  },
+  {
+    title: "Gain-free quantum sensing via PT-like-induced coherence enhancement in cavity-magnomechanical system",
+    journal: "Chinese Physics B",
+    date: "2026-06-24",
+    doi: "10.1088/1674-1056/ae8163",
+    pdfUrl: "https://iopscience.iop.org/article/10.1088/1674-1056/ae8163/pdf",
+    innovation:
+      "提出无需增益的 PT-like 相干增强量子传感机制，适合与非厄米增益-损耗方案进行噪声和可实现性比较。",
+  },
+];
 // EDITABLE CONTENT END.
 
 const root = document.documentElement;
@@ -103,6 +134,7 @@ const searchInput = document.querySelector("[data-search]");
 const filterGroup = document.querySelector("[data-filter-group]");
 const paperGrid = document.querySelector("[data-paper-grid]");
 const datasetGrid = document.querySelector("[data-dataset-grid]");
+const latestPaperGrid = document.querySelector("[data-latest-paper-grid]");
 const paperCount = document.querySelector("[data-paper-count]");
 const datasetCount = document.querySelector("[data-dataset-count]");
 
@@ -370,6 +402,233 @@ function renderDatasets() {
     .join("");
 }
 
+const relatedPaperQueries = [
+  '"non-Hermitian"',
+  '"exceptional point" sensing',
+  '"quantum sensing" "PT-like"',
+];
+
+const relatedJournalHints = [
+  "Physical Review",
+  "Quantum Science and Technology",
+  "Journal of Physics A",
+  "Chinese Physics B",
+  "Applied Physics Letters",
+  "Optics Letters",
+  "Optics Express",
+  "Photonics Research",
+  "Nanophotonics",
+  "Scientific Reports",
+  "Sensors",
+];
+
+function getDateDaysAgo(days) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return date.toISOString().slice(0, 10);
+}
+
+function cleanCrossrefText(value = "") {
+  return String(value)
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+-\s*/g, "-")
+    .trim();
+}
+
+function getCrossrefDate(item) {
+  const parts =
+    item.published?.["date-parts"]?.[0] ||
+    item["published-online"]?.["date-parts"]?.[0] ||
+    item.created?.["date-parts"]?.[0] ||
+    [];
+  const [year, month = 1, day = 1] = parts;
+  if (!year) return "";
+  return [year, String(month).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
+}
+
+function getPdfUrl(item) {
+  const links = item.link || [];
+  const pdf = links.find((link) => {
+    const type = String(link["content-type"] || "").toLowerCase();
+    const url = String(link.URL || "");
+    return type.includes("pdf") || /\.pdf(\?|$)/i.test(url);
+  });
+  return pdf?.URL || "";
+}
+
+function isRelatedCrossrefItem(item) {
+  const text = `${cleanCrossrefText(item.title?.[0])} ${cleanCrossrefText(
+    item["container-title"]?.[0]
+  )}`.toLowerCase();
+  const hasTopic =
+    text.includes("non-hermitian") ||
+    text.includes("nonhermitian") ||
+    text.includes("exceptional point") ||
+    text.includes("quantum sensing") ||
+    text.includes("pt-like") ||
+    text.includes("pt-symmetric") ||
+    text.includes("parity-time") ||
+    text.includes("spectral splitting") ||
+    text.includes("liouvillian");
+  const hasJournalHint = relatedJournalHints.some((journal) => text.includes(journal.toLowerCase()));
+  return hasTopic && hasJournalHint;
+}
+
+function innovationForRelatedPaper(title) {
+  const text = title.toLowerCase();
+  if (
+    text.includes("gain-free") ||
+    text.includes("pt-like") ||
+    text.includes("pt-symmetric") ||
+    text.includes("parity-time")
+  ) {
+    return "突出无增益或 PT-like 相干增强路线，可用于比较非厄米传感中的噪声、稳定性与实验可实现性。";
+  }
+  if (text.includes("random matrix")) {
+    return "从非厄米谱统计角度刻画普适类，可为奇异点附近噪声放大与谱响应建模提供理论背景。";
+  }
+  if (text.includes("simulation")) {
+    return "提供非厄米动力学和特殊函数的模拟路径，有助于把抽象非厄米模型转化为可计算、可验证的系统。";
+  }
+  if (text.includes("sensing")) {
+    return "围绕量子或非厄米传感机制提出新的增强路径，适合与奇异点放大方案并列比较。";
+  }
+  return "近 30 天内与非厄米、奇异点或量子传感相关，并带有可访问 PDF 的期刊论文。";
+}
+
+async function fetchCrossrefRelatedPapers() {
+  const fromDate = getDateDaysAgo(30);
+  const untilDate = new Date().toISOString().slice(0, 10);
+  const seen = new Set();
+  const papers = [];
+
+  for (const query of relatedPaperQueries) {
+    const params = new URLSearchParams({
+      "query.title": query,
+      filter: `type:journal-article,from-pub-date:${fromDate},until-pub-date:${untilDate}`,
+      sort: "published",
+      order: "desc",
+      rows: "60",
+      mailto: "holenn@example.com",
+    });
+    const response = await fetch(`https://api.crossref.org/works?${params}`);
+    if (!response.ok) continue;
+    const data = await response.json();
+
+    for (const item of data.message?.items || []) {
+      const title = cleanCrossrefText(item.title?.[0]);
+      const journal = cleanCrossrefText(item["container-title"]?.[0]);
+      const doi = normalizeDoi(item.DOI);
+      const date = getCrossrefDate(item);
+      const pdfUrl = getPdfUrl(item);
+      if (!title || !journal || !doi || !date || !pdfUrl) continue;
+      if (firstAuthorDois.includes(doi) || doi === "10.1063/5.0333910" || doi === "10.1109/lmwt.2025.3642799") {
+        continue;
+      }
+      if (seen.has(doi) || !isRelatedCrossrefItem(item)) continue;
+      seen.add(doi);
+      papers.push({
+        title,
+        journal,
+        date,
+        doi,
+        pdfUrl,
+        innovation: innovationForRelatedPaper(title),
+      });
+      if (papers.length >= 3) return papers;
+    }
+  }
+
+  return papers;
+}
+
+function renderLatestPapers(papers, updatedAt = "") {
+  if (!latestPaperGrid) return;
+
+  latestPaperGrid.innerHTML = papers
+    .slice(0, 3)
+    .map(
+      (paper) => `
+        <article class="latest-paper-card">
+          <div class="card-meta">
+            <strong>${paper.date || "recent"}</strong>
+            <span>${paper.journal || "Journal article"}</span>
+          </div>
+          <h3>${paper.title}</h3>
+          <p>${paper.innovation}</p>
+          <div class="card-links">
+            ${
+              paper.pdfUrl
+                ? `<a href="${paper.pdfUrl}" target="_blank" rel="noreferrer">PDF ↗</a>`
+                : "<span>PDF待补</span>"
+            }
+            ${
+              paper.doi
+                ? `<a href="https://doi.org/${paper.doi}" target="_blank" rel="noreferrer">DOI: ${paper.doi} ↗</a>`
+                : "<span>DOI待补</span>"
+            }
+          </div>
+        </article>
+      `
+    )
+    .join("");
+
+  if (updatedAt) {
+    latestPaperGrid.insertAdjacentHTML(
+      "beforeend",
+      `<p class="latest-note">Last update: ${updatedAt} · Source: Crossref public API</p>`
+    );
+  }
+}
+
+function mergeLatestPapers(...groups) {
+  const seen = new Set();
+  const merged = [];
+  for (const group of groups) {
+    for (const paper of group || []) {
+      const key = normalizeDoi(paper.doi) || paper.title;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(paper);
+      if (merged.length >= 3) return merged;
+    }
+  }
+  return merged;
+}
+
+async function loadLatestPapers() {
+  if (!latestPaperGrid) return;
+
+  latestPaperGrid.innerHTML = `
+    <div class="loading-state">
+      <span aria-hidden="true"></span>
+      正在筛选近 30 天可访问 PDF 论文
+    </div>
+  `;
+
+  try {
+    const livePapers = await fetchCrossrefRelatedPapers();
+    let storedPapers = [];
+    let storedDate = "";
+    try {
+      const response = await fetch("./data/latest-papers.json", { cache: "no-store" });
+      if (response.ok) {
+        const data = await response.json();
+        storedPapers = data.papers || [];
+        storedDate = data.updatedAt || "";
+      }
+    } catch {
+      storedPapers = [];
+    }
+    const merged = mergeLatestPapers(livePapers, storedPapers, latestPapersFallback);
+    renderLatestPapers(merged, livePapers.length ? new Date().toISOString().slice(0, 10) : storedDate);
+  } catch (error) {
+    console.info("Using local latest-paper fallback.", error);
+    renderLatestPapers(latestPapersFallback);
+  }
+}
+
 function initInteractions() {
   if (header) {
     window.addEventListener(
@@ -561,6 +820,7 @@ function initFieldCanvas() {
 initTheme();
 initializePapers();
 renderDatasets();
+loadLatestPapers();
 initInteractions();
 initReveal();
 initFieldCanvas();
