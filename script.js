@@ -260,6 +260,7 @@ async function syncPapersFromOrcid() {
 }
 
 function renderPapersLoading() {
+  if (!paperGrid) return;
   paperCount.textContent = "…";
   paperGrid.innerHTML = `
     <div class="loading-state">
@@ -283,6 +284,8 @@ function paperMatches(paper) {
 }
 
 function renderPapers() {
+  if (!paperGrid) return;
+
   if (isPaperLoading) {
     renderPapersLoading();
     return;
@@ -328,6 +331,8 @@ function renderPapers() {
 }
 
 async function initializePapers() {
+  if (!paperGrid) return;
+
   renderPapersLoading();
   const hasLivePapers = await syncPapersFromOrcid();
   if (!hasLivePapers) {
@@ -338,7 +343,12 @@ async function initializePapers() {
 }
 
 function renderDatasets() {
-  datasetCount.textContent = String(datasets.length);
+  if (datasetCount) {
+    datasetCount.textContent = String(datasets.length);
+  }
+
+  if (!datasetGrid) return;
+
   datasetGrid.innerHTML = datasets
     .map(
       (dataset) => `
@@ -361,35 +371,43 @@ function renderDatasets() {
 }
 
 function initInteractions() {
-  window.addEventListener(
-    "scroll",
-    () => {
-      header.classList.toggle("is-scrolled", window.scrollY > 18);
-    },
-    { passive: true }
-  );
+  if (header) {
+    window.addEventListener(
+      "scroll",
+      () => {
+        header.classList.toggle("is-scrolled", window.scrollY > 18);
+      },
+      { passive: true }
+    );
+  }
 
-  themeToggle.addEventListener("click", () => {
-    const nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
-    root.dataset.theme = nextTheme;
-    setStoredTheme(nextTheme);
-  });
-
-  searchInput.addEventListener("input", (event) => {
-    searchTerm = event.target.value.trim().toLowerCase();
-    renderPapers();
-  });
-
-  filterGroup.addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (!button) return;
-    activeFilter = button.dataset.filter;
-    filterGroup.querySelectorAll("button").forEach((item) => {
-      item.classList.toggle("is-active", item === button);
-      item.setAttribute("aria-pressed", item === button ? "true" : "false");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      const nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
+      root.dataset.theme = nextTheme;
+      setStoredTheme(nextTheme);
     });
-    renderPapers();
-  });
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", (event) => {
+      searchTerm = event.target.value.trim().toLowerCase();
+      renderPapers();
+    });
+  }
+
+  if (filterGroup) {
+    filterGroup.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      activeFilter = button.dataset.filter;
+      filterGroup.querySelectorAll("button").forEach((item) => {
+        item.classList.toggle("is-active", item === button);
+        item.setAttribute("aria-pressed", item === button ? "true" : "false");
+      });
+      renderPapers();
+    });
+  }
 }
 
 function initReveal() {
@@ -417,6 +435,8 @@ function initReveal() {
 
 function initFieldCanvas() {
   const canvas = document.querySelector("[data-field-canvas]");
+  if (!canvas) return;
+
   const ctx = canvas.getContext("2d");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const pointer = { x: 0, y: 0, active: false };
