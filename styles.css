@@ -681,14 +681,21 @@ input {
 .flow-line {
   width: min(1120px, 100%);
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
   gap: 16px;
+  overflow-x: auto;
+  padding: 2px 2px 16px;
+  scroll-snap-type: x mandatory;
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
 }
 
 .flow-line article {
+  flex: 0 0 min(360px, calc(100vw - var(--page-pad) * 2 - 18px));
   padding: 26px;
-  min-height: 220px;
+  min-height: 260px;
+  scroll-snap-align: start;
 }
 
 .flow-line span {
@@ -696,6 +703,32 @@ input {
   color: var(--coral);
   font-weight: 800;
   margin-bottom: 28px;
+}
+
+.flow-line::-webkit-scrollbar {
+  height: 8px;
+}
+
+.flow-line::-webkit-scrollbar-track {
+  background: rgba(127, 127, 127, 0.08);
+  border-radius: 999px;
+}
+
+.flow-line::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+}
+
+.flow-placeholder {
+  background:
+    linear-gradient(135deg, rgba(0, 127, 120, 0.1), rgba(155, 113, 26, 0.08)),
+    var(--surface);
+  border-style: dashed;
+}
+
+.flow-placeholder h3,
+.flow-placeholder p {
+  color: var(--muted);
 }
 
 .empty-state {
@@ -837,8 +870,7 @@ input {
 
   .resource-grid,
   .dataset-river,
-  .latest-paper-grid,
-  .flow-line {
+  .latest-paper-grid {
     grid-template-columns: 1fr;
   }
 
