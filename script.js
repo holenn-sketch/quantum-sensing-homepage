@@ -363,7 +363,11 @@ function renderPapers() {
 }
 
 async function initializePapers() {
-  if (!paperGrid) return;
+  if (!paperGrid) {
+    papers = [...papersFallback];
+    if (paperCount) paperCount.textContent = String(papers.length);
+    return;
+  }
 
   renderPapersLoading();
   const hasLivePapers = await syncPapersFromOrcid();

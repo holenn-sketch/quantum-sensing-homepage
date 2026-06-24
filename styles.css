@@ -95,6 +95,15 @@ input {
   transition: background 240ms ease, border-color 240ms ease, transform 240ms ease;
 }
 
+.site-header .brand {
+  grid-column: 1;
+}
+
+.site-header .icon-button {
+  grid-column: 3;
+  justify-self: end;
+}
+
 .site-header.is-scrolled {
   background: var(--surface-strong);
   border-color: var(--line-strong);
@@ -128,16 +137,23 @@ input {
 }
 
 .site-nav {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 4px;
+  white-space: nowrap;
 }
 
 .site-nav a {
-  padding: 8px 12px;
+  padding: 8px 11px;
   border-radius: 8px;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  font-weight: 700;
   transition: color 160ms ease, background 160ms ease;
 }
 
@@ -482,7 +498,8 @@ input {
 
 .resource-grid,
 .dataset-river,
-.latest-paper-grid {
+.latest-paper-grid,
+.portal-grid {
   width: min(1120px, 100%);
   margin: 0 auto;
   display: grid;
@@ -493,6 +510,7 @@ input {
 .resource-card,
 .dataset-card,
 .latest-paper-card,
+.portal-card,
 .flow-line article {
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
@@ -518,6 +536,20 @@ input {
   flex-direction: column;
 }
 
+.portal-card {
+  min-height: 248px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.portal-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  background: var(--surface-strong);
+}
+
 .resource-card.is-visible {
   opacity: 1;
   transform: translateY(0);
@@ -525,7 +557,8 @@ input {
 
 .resource-card:hover,
 .dataset-card:hover,
-.latest-paper-card:hover {
+.latest-paper-card:hover,
+.portal-card:hover {
   border-color: var(--line-strong);
 }
 
@@ -545,6 +578,7 @@ input {
 .resource-card h3,
 .dataset-card h3,
 .latest-paper-card h3,
+.portal-card h3,
 .flow-line h3 {
   margin: 0;
   font-size: 1.22rem;
@@ -554,6 +588,7 @@ input {
 .resource-card p,
 .dataset-card p,
 .latest-paper-card p,
+.portal-card p,
 .flow-line p {
   color: var(--muted);
   line-height: 1.72;
@@ -565,6 +600,16 @@ input {
 
 .latest-paper-card p {
   margin: 16px 0 20px;
+}
+
+.portal-card span {
+  color: var(--aqua);
+  font-weight: 800;
+  margin-bottom: 30px;
+}
+
+.portal-card p {
+  margin: 16px 0 0;
 }
 
 .latest-paper-card .card-links {
@@ -819,6 +864,10 @@ input {
     grid-template-columns: 1fr auto;
   }
 
+  .site-header .icon-button {
+    grid-column: 2;
+  }
+
   .brand span:last-child {
     max-width: 150px;
     overflow: hidden;
@@ -870,7 +919,8 @@ input {
 
   .resource-grid,
   .dataset-river,
-  .latest-paper-grid {
+  .latest-paper-grid,
+  .portal-grid {
     grid-template-columns: 1fr;
   }
 
@@ -914,6 +964,7 @@ input {
   .resource-card,
   .dataset-card,
   .latest-paper-card,
+  .portal-card,
   .flow-line article {
     padding: 20px;
   }
