@@ -440,6 +440,37 @@ function cleanCrossrefText(value = "") {
     .trim();
 }
 
+function normalizePaperTitle(value = "") {
+  return cleanCrossrefText(value)
+    .toLowerCase()
+    .replace(/\b(corrigendum|erratum|correction|addendum)\b[:：]?\s*/g, "")
+    .replace(/\s*\([^)]*(corrigendum|erratum|correction|addendum)[^)]*\)\s*/g, " ")
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, " ")
+    .replace(/\b(the|a|an)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isCorrectionLikeTitle(title = "") {
+  const text = cleanCrossrefText(title).toLowerCase();
+  return (
+    /^(corrigendum|erratum|correction|addendum)\b/.test(text) ||
+    /\b(comment\s+on|reply\s+to|editorial)\b/.test(text)
+  );
+}
+
+function getPaperDedupKeys(paper = {}) {
+  return [normalizeDoi(paper.doi), normalizePaperTitle(paper.title)].filter(Boolean);
+}
+
+function hasSeenPaper(seenKeys, paper) {
+  return getPaperDedupKeys(paper).some((key) => seenKeys.has(key));
+}
+
+function rememberPaper(seenKeys, paper) {
+  getPaperDedupKeys(paper).forEach((key) => seenKeys.add(key));
+}
+
 function getCrossrefDate(item) {
   const parts =
     item.published?.["date-parts"]?.[0] ||
@@ -504,7 +535,7 @@ function innovationForRelatedPaper(title) {
 async function fetchCrossrefRelatedPapers() {
   const fromDate = getDateDaysAgo(30);
   const untilDate = new Date().toISOString().slice(0, 10);
-  const seen = new Set();
+  const seenKeys = new Set();
   const papers = [];
 
   for (const query of relatedPaperQueries) {
@@ -527,19 +558,21 @@ async function fetchCrossrefRelatedPapers() {
       const date = getCrossrefDate(item);
       const pdfUrl = getPdfUrl(item);
       if (!title || !journal || !doi || !date || !pdfUrl) continue;
+      if (isCorrectionLikeTitle(title)) continue;
       if (firstAuthorDois.includes(doi) || doi === "10.1063/5.0333910" || doi === "10.1109/lmwt.2025.3642799") {
         continue;
       }
-      if (seen.has(doi) || !isRelatedCrossrefItem(item)) continue;
-      seen.add(doi);
-      papers.push({
+      const candidate = {
         title,
         journal,
         date,
         doi,
         pdfUrl,
         innovation: innovationForRelatedPaper(title),
-      });
+      };
+      if (hasSeenPaper(seenKeys, candidate) || !isRelatedCrossrefItem(item)) continue;
+      rememberPaper(seenKeys, candidate);
+      papers.push(candidate);
       if (papers.length >= 3) return papers;
     }
   }
@@ -587,13 +620,12 @@ function renderLatestPapers(papers, updatedAt = "") {
 }
 
 function mergeLatestPapers(...groups) {
-  const seen = new Set();
+  const seenKeys = new Set();
   const merged = [];
   for (const group of groups) {
     for (const paper of group || []) {
-      const key = normalizeDoi(paper.doi) || paper.title;
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
+      if (!paper || isCorrectionLikeTitle(paper.title) || hasSeenPaper(seenKeys, paper)) continue;
+      rememberPaper(seenKeys, paper);
       merged.push(paper);
       if (merged.length >= 3) return merged;
     }
