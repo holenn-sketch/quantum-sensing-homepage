@@ -652,6 +652,59 @@ input {
   gap: 10px;
 }
 
+.paper-date-group {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.52);
+}
+
+:root[data-theme="dark"] .paper-date-group {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.paper-date-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.paper-date-heading span {
+  color: var(--aqua);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.paper-date-heading strong {
+  color: var(--ink);
+  font-size: 1.22rem;
+  line-height: 1;
+}
+
+.paper-date-heading small {
+  font-size: 0.78rem;
+}
+
+.paper-date-content {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.latest-paper-group .paper-date-content {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.history-paper-group .paper-date-content {
+  grid-template-columns: 1fr;
+}
+
 .history-paper-item {
   min-height: 112px;
   display: grid;
@@ -1117,6 +1170,16 @@ input {
   .latest-paper-grid,
   .portal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .paper-date-group,
+  .latest-paper-group .paper-date-content {
+    grid-template-columns: 1fr;
+  }
+
+  .paper-date-group {
+    gap: 14px;
+    padding: 14px;
   }
 
   .history-paper-item {

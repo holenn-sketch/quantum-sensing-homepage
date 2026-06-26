@@ -554,6 +554,88 @@ function getRecommendationDate(paper = {}, fallback = "") {
   return paper.recommendedAt || paper.recommendationDate || fallback || "";
 }
 
+function groupPapersByRecommendationDate(papers = [], fallbackDate = "") {
+  const groups = [];
+  const groupMap = new Map();
+
+  papers.forEach((paper) => {
+    const date = getRecommendationDate(paper, fallbackDate) || "undated";
+    if (!groupMap.has(date)) {
+      const group = { date, papers: [] };
+      groupMap.set(date, group);
+      groups.push(group);
+    }
+    groupMap.get(date).papers.push(paper);
+  });
+
+  return groups;
+}
+
+function createLatestPaperCard(paper) {
+  return `
+    <article class="latest-paper-card">
+      <div class="card-meta">
+        <strong>发表 ${paper.date || "recent"}</strong>
+        <span>${paper.journal || "Journal article"}</span>
+      </div>
+      <h3>${paper.title}</h3>
+      <p>${paper.innovation}</p>
+      <div class="card-links">
+        ${createFavoriteButton(paper)}
+        ${
+          paper.pdfUrl
+            ? `<a href="${paper.pdfUrl}" target="_blank" rel="noreferrer">PDF ↗</a>`
+            : "<span>PDF待补</span>"
+        }
+        ${
+          paper.doi
+            ? `<a href="https://doi.org/${paper.doi}" target="_blank" rel="noreferrer">DOI: ${paper.doi} ↗</a>`
+            : "<span>DOI待补</span>"
+        }
+      </div>
+    </article>
+  `;
+}
+
+function createHistoryPaperItem(paper) {
+  return `
+    <article class="history-paper-item">
+      <div class="history-paper-meta">
+        <strong>${paper.journal || "Journal article"}</strong>
+        <span>发表 ${paper.date || "n.d."}</span>
+      </div>
+      <div class="history-paper-copy">
+        <h3>${paper.title}</h3>
+        <p>${paper.innovation}</p>
+      </div>
+      <div class="history-paper-actions">
+        ${createFavoriteButton(paper)}
+        ${
+          paper.doi
+            ? `<a href="https://doi.org/${paper.doi}" target="_blank" rel="noreferrer">DOI ↗</a>`
+            : "<span>DOI待补</span>"
+        }
+      </div>
+    </article>
+  `;
+}
+
+function createRecommendationDateGroup(group, variant, renderPaper) {
+  const countLabel = `${group.papers.length} 篇论文`;
+  return `
+    <section class="paper-date-group ${variant}">
+      <div class="paper-date-heading">
+        <span>推荐日期</span>
+        <strong>${group.date}</strong>
+        <small>${countLabel}</small>
+      </div>
+      <div class="paper-date-content">
+        ${group.papers.map(renderPaper).join("")}
+      </div>
+    </section>
+  `;
+}
+
 function createPaperKeySet(papers = []) {
   const seenKeys = new Set();
   papers.forEach((paper) => rememberPaper(seenKeys, paper));
@@ -712,33 +794,11 @@ function renderLatestPapers(papers, updatedAt = "") {
     return;
   }
 
-  latestPaperGrid.innerHTML = papers
-    .slice(0, 3)
-    .map(
-      (paper) => `
-        <article class="latest-paper-card">
-          <div class="card-meta">
-            <strong>推荐 ${getRecommendationDate(paper, updatedAt || getTodayString())}</strong>
-            <span>${paper.journal || "Journal article"}</span>
-          </div>
-          <h3>${paper.title}</h3>
-          <p>${paper.innovation}</p>
-          <div class="card-links">
-            ${createFavoriteButton(paper)}
-            ${
-              paper.pdfUrl
-                ? `<a href="${paper.pdfUrl}" target="_blank" rel="noreferrer">PDF ↗</a>`
-                : "<span>PDF待补</span>"
-            }
-            ${
-              paper.doi
-                ? `<a href="https://doi.org/${paper.doi}" target="_blank" rel="noreferrer">DOI: ${paper.doi} ↗</a>`
-                : "<span>DOI待补</span>"
-            }
-          </div>
-        </article>
-      `
-    )
+  latestPaperGrid.innerHTML = groupPapersByRecommendationDate(
+    papers.slice(0, 3),
+    updatedAt || getTodayString()
+  )
+    .map((group) => createRecommendationDateGroup(group, "latest-paper-group", createLatestPaperCard))
     .join("");
 
   if (updatedAt) {
@@ -767,30 +827,8 @@ function renderPaperHistory(papers, updatedAt = "") {
   if (!historyPaperGrid) return;
 
   const sourcePapers = papers.length ? papers : paperHistoryFallback;
-  historyPaperGrid.innerHTML = sourcePapers
-    .map(
-      (paper) => `
-        <article class="history-paper-item">
-          <div class="history-paper-meta">
-            <strong>推荐 ${getRecommendationDate(paper, updatedAt || "archived")}</strong>
-            <span>${paper.journal || "Journal article"}</span>
-            <span>发表 ${paper.date || "n.d."}</span>
-          </div>
-          <div class="history-paper-copy">
-            <h3>${paper.title}</h3>
-            <p>${paper.innovation}</p>
-          </div>
-          <div class="history-paper-actions">
-            ${createFavoriteButton(paper)}
-            ${
-              paper.doi
-                ? `<a href="https://doi.org/${paper.doi}" target="_blank" rel="noreferrer">DOI ↗</a>`
-                : "<span>DOI待补</span>"
-            }
-          </div>
-        </article>
-      `
-    )
+  historyPaperGrid.innerHTML = groupPapersByRecommendationDate(sourcePapers, updatedAt || "archived")
+    .map((group) => createRecommendationDateGroup(group, "history-paper-group", createHistoryPaperItem))
     .join("");
 
   if (updatedAt) {
