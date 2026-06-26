@@ -100,6 +100,7 @@ const paperHistoryFallback = [
     title: "Quantum simulation of non-Hermitian special functions and dynamics via contour-based matrix decomposition",
     journal: "Quantum Science and Technology",
     date: "2026-06-24",
+    recommendedAt: "2026-06-24",
     doi: "10.1088/2058-9565/ae7b7e",
     pdfUrl: "https://iopscience.iop.org/article/10.1088/2058-9565/ae7b7e/pdf",
     innovation:
@@ -110,6 +111,7 @@ const paperHistoryFallback = [
       "Three non-Hermitian random matrix universality classes of complex edge statistics: Spacing ratios and distributions",
     journal: "Journal of Physics A: Mathematical and Theoretical",
     date: "2026-06-23",
+    recommendedAt: "2026-06-24",
     doi: "10.1088/1751-8121/ae777d",
     pdfUrl: "https://iopscience.iop.org/article/10.1088/1751-8121/ae777d/pdf",
     innovation:
@@ -119,6 +121,7 @@ const paperHistoryFallback = [
     title: "Gain-free quantum sensing via PT-like-induced coherence enhancement in cavity-magnomechanical system",
     journal: "Chinese Physics B",
     date: "2026-06-24",
+    recommendedAt: "2026-06-24",
     doi: "10.1088/1674-1056/ae8163",
     pdfUrl: "https://iopscience.iop.org/article/10.1088/1674-1056/ae8163/pdf",
     innovation:
@@ -140,6 +143,7 @@ const latestPaperGrid = document.querySelector("[data-latest-paper-grid]");
 const historyPaperGrid = document.querySelector("[data-history-paper-grid]");
 const paperCount = document.querySelector("[data-paper-count]");
 const datasetCount = document.querySelector("[data-dataset-count]");
+const favoriteStorageKey = "archive-favorite-papers";
 
 let activeFilter = "all";
 let searchTerm = "";
@@ -157,6 +161,23 @@ function setStoredTheme(theme) {
     localStorage.setItem("archive-theme", theme);
   } catch {
     // localStorage can be unavailable in private contexts.
+  }
+}
+
+function getFavoriteKeys() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(favoriteStorageKey) || "[]");
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function setFavoriteKeys(keys) {
+  try {
+    localStorage.setItem(favoriteStorageKey, JSON.stringify([...keys]));
+  } catch {
+    // Favorites are a local convenience; ignore unavailable storage.
   }
 }
 
@@ -435,6 +456,10 @@ function getDateDaysAgo(days) {
   return date.toISOString().slice(0, 10);
 }
 
+function getTodayString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function cleanCrossrefText(value = "") {
   return String(value)
     .replace(/<[^>]+>/g, "")
@@ -472,6 +497,61 @@ function hasSeenPaper(seenKeys, paper) {
 
 function rememberPaper(seenKeys, paper) {
   getPaperDedupKeys(paper).forEach((key) => seenKeys.add(key));
+}
+
+function getPaperFavoriteKey(paper = {}) {
+  return normalizeDoi(paper.doi) || normalizePaperTitle(paper.title);
+}
+
+function isPaperFavorited(key) {
+  return key ? getFavoriteKeys().has(key) : false;
+}
+
+function createFavoriteButton(paper = {}) {
+  const key = getPaperFavoriteKey(paper);
+  if (!key) return "";
+  const isSaved = isPaperFavorited(key);
+  const label = isSaved ? "已收藏" : "收藏";
+  return `
+    <button
+      class="favorite-button${isSaved ? " is-saved" : ""}"
+      type="button"
+      data-favorite-paper
+      data-paper-key="${encodeURIComponent(key)}"
+      aria-pressed="${isSaved ? "true" : "false"}"
+      aria-label="${isSaved ? "取消收藏论文" : "收藏论文"}"
+    >
+      <span aria-hidden="true">${isSaved ? "★" : "☆"}</span>
+      <span>${label}</span>
+    </button>
+  `;
+}
+
+function updateFavoriteButtons(key, isSaved) {
+  document.querySelectorAll("[data-favorite-paper]").forEach((button) => {
+    if (button.dataset.paperKey !== encodeURIComponent(key)) return;
+    button.classList.toggle("is-saved", isSaved);
+    button.setAttribute("aria-pressed", isSaved ? "true" : "false");
+    button.setAttribute("aria-label", isSaved ? "取消收藏论文" : "收藏论文");
+    const [icon, label] = button.querySelectorAll("span");
+    if (icon) icon.textContent = isSaved ? "★" : "☆";
+    if (label) label.textContent = isSaved ? "已收藏" : "收藏";
+  });
+}
+
+function toggleFavoritePaper(button) {
+  const key = decodeURIComponent(button.dataset.paperKey || "");
+  if (!key) return;
+  const keys = getFavoriteKeys();
+  const isSaved = keys.has(key);
+  if (isSaved) keys.delete(key);
+  else keys.add(key);
+  setFavoriteKeys(keys);
+  updateFavoriteButtons(key, !isSaved);
+}
+
+function getRecommendationDate(paper = {}, fallback = "") {
+  return paper.recommendedAt || paper.recommendationDate || fallback || "";
 }
 
 function createPaperKeySet(papers = []) {
@@ -603,6 +683,7 @@ async function fetchCrossrefRelatedPapers(excludedPapers = []) {
         title,
         journal,
         date,
+        recommendedAt: untilDate,
         doi,
         pdfUrl,
         innovation: innovationForRelatedPaper(title),
@@ -637,12 +718,13 @@ function renderLatestPapers(papers, updatedAt = "") {
       (paper) => `
         <article class="latest-paper-card">
           <div class="card-meta">
-            <strong>${paper.date || "recent"}</strong>
+            <strong>推荐 ${getRecommendationDate(paper, updatedAt || getTodayString())}</strong>
             <span>${paper.journal || "Journal article"}</span>
           </div>
           <h3>${paper.title}</h3>
           <p>${paper.innovation}</p>
           <div class="card-links">
+            ${createFavoriteButton(paper)}
             ${
               paper.pdfUrl
                 ? `<a href="${paper.pdfUrl}" target="_blank" rel="noreferrer">PDF ↗</a>`
@@ -690,14 +772,16 @@ function renderPaperHistory(papers, updatedAt = "") {
       (paper) => `
         <article class="history-paper-item">
           <div class="history-paper-meta">
-            <strong>${paper.date || "archived"}</strong>
+            <strong>推荐 ${getRecommendationDate(paper, updatedAt || "archived")}</strong>
             <span>${paper.journal || "Journal article"}</span>
+            <span>发表 ${paper.date || "n.d."}</span>
           </div>
           <div class="history-paper-copy">
             <h3>${paper.title}</h3>
             <p>${paper.innovation}</p>
           </div>
           <div class="history-paper-actions">
+            ${createFavoriteButton(paper)}
             ${
               paper.doi
                 ? `<a href="https://doi.org/${paper.doi}" target="_blank" rel="noreferrer">DOI ↗</a>`
@@ -737,7 +821,10 @@ async function loadLatestPapers() {
       const response = await fetch("./data/latest-papers.json", { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
-        storedPapers = filterAgainstPaperHistory(data.papers || [], historyPapers);
+        storedPapers = filterAgainstPaperHistory(data.papers || [], historyPapers).map((paper) => ({
+          ...paper,
+          recommendedAt: paper.recommendedAt || data.updatedAt || "",
+        }));
         storedDate = data.updatedAt || "";
       }
     } catch {
@@ -804,6 +891,12 @@ function initInteractions() {
       renderPapers();
     });
   }
+
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-favorite-paper]");
+    if (!button) return;
+    toggleFavoritePaper(button);
+  });
 }
 
 function initReveal() {
