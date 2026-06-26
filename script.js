@@ -103,8 +103,10 @@ const paperHistoryFallback = [
     recommendedAt: "2026-06-24",
     doi: "10.1088/2058-9565/ae7b7e",
     pdfUrl: "https://iopscience.iop.org/article/10.1088/2058-9565/ae7b7e/pdf",
+    abstract:
+      "Simulating non-Hermitian dynamics on quantum computers is often hindered by decaying success probability and unstable non-diagonalizable matrices. The paper proposes contour-based matrix decomposition as a quantum functional calculus framework for non-Hermitian matrix functions.",
     innovation:
-      "用轮廓矩阵分解模拟非厄米特殊函数与动力学，为非厄米模型的可实现模拟与参数响应分析提供工具。",
+      "摘要提出轮廓矩阵分解来模拟非厄米矩阵函数和动力学，以受控截断误差处理不可对角化矩阵；有助于把抽象非厄米模型转化为可计算系统。",
   },
   {
     title:
@@ -114,8 +116,10 @@ const paperHistoryFallback = [
     recommendedAt: "2026-06-24",
     doi: "10.1088/1751-8121/ae777d",
     pdfUrl: "https://iopscience.iop.org/article/10.1088/1751-8121/ae777d/pdf",
+    abstract:
+      "The paper studies complex spacing ratios and nearest-neighbour spacing distributions for three generic local edge statistics in non-Hermitian random matrix symmetry classes.",
     innovation:
-      "从非厄米随机矩阵边缘统计出发区分三类普适行为，可为噪声、谱统计与奇异点附近响应建模提供理论参照。",
+      "摘要解析和数值比较非厄米随机矩阵边缘统计的间距比与近邻分布，提供谱统计普适类基准，可辅助建模 EP 附近噪声放大与谱响应。",
   },
   {
     title: "Gain-free quantum sensing via PT-like-induced coherence enhancement in cavity-magnomechanical system",
@@ -124,8 +128,10 @@ const paperHistoryFallback = [
     recommendedAt: "2026-06-24",
     doi: "10.1088/1674-1056/ae8163",
     pdfUrl: "https://iopscience.iop.org/article/10.1088/1674-1056/ae8163/pdf",
+    abstract:
+      "A gain-free PT-like-induced coherence enhancement quantum sensing scheme is implemented in a cavity-magnomechanical system. The optimal sensing regime is determined by the phase of coherent parameters, and the signal-to-noise ratio can be suppressed or enhanced depending on probe configuration.",
     innovation:
-      "提出无需增益的 PT-like 相干增强量子传感机制，适合与非厄米增益-损耗方案进行噪声和可实现性比较。",
+      "摘要提出无传统增益-损耗平衡的 PT-like 相干增强方案，并把最佳传感区间与相干参数相位联系起来；可用于比较非厄米传感中的噪声、稳定性与可实现性。",
   },
 ];
 
@@ -536,6 +542,10 @@ function getTodayString() {
 function cleanCrossrefText(value = "") {
   return String(value)
     .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
     .replace(/\s+/g, " ")
     .replace(/\s+-\s*/g, "-")
     .trim();
@@ -584,6 +594,7 @@ function getFavoritePaperPayload(paper = {}) {
     recommendedAt: getRecommendationDate(paper),
     doi: normalizeDoi(paper.doi),
     pdfUrl: paper.pdfUrl || "",
+    abstract: cleanCrossrefText(paper.abstract || ""),
     innovation: paper.innovation || paper.summary || "",
   };
 }
@@ -860,6 +871,10 @@ function getCrossrefDate(item) {
   return [year, String(month).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
 }
 
+function getCrossrefAbstract(item) {
+  return cleanCrossrefText(item.abstract || "").replace(/^abstract\s*/i, "");
+}
+
 function getPdfUrl(item) {
   const links = item.link || [];
   const pdf = links.find((link) => {
@@ -886,9 +901,10 @@ function inferPdfUrl(item) {
 }
 
 function getRelatedPaperScore(item) {
-  const text = `${cleanCrossrefText(item.title?.[0])} ${cleanCrossrefText(
-    item["container-title"]?.[0]
-  )}`.toLowerCase();
+  const title = cleanCrossrefText(item.title?.[0]);
+  const journal = cleanCrossrefText(item["container-title"]?.[0]);
+  const abstract = getCrossrefAbstract(item);
+  const text = `${title} ${journal} ${abstract}`.toLowerCase();
   const physicsScore = relatedPhysicsTerms.filter((term) => text.includes(term)).length;
   const sensingScore = relatedSensingTerms.filter((term) => text.includes(term)).length;
   const journalBoost = relatedJournalHints.some((journal) => text.includes(journal.toLowerCase())) ? 1 : 0;
@@ -900,25 +916,70 @@ function isRelatedCrossrefItem(item) {
   return getRelatedPaperScore(item) > 0;
 }
 
-function innovationForRelatedPaper(title) {
-  const text = title.toLowerCase();
-  if (text.includes("higher-order spectral splitting") || text.includes("second-order exceptional point")) {
-    return "围绕二阶奇异点附近的高阶谱分裂展开，突出可调谱响应与增强传感之间的关系，可作为高阶 EP 读出机制的参考。";
+function reconstructOpenAlexAbstract(invertedIndex) {
+  if (!invertedIndex || typeof invertedIndex !== "object") return "";
+  const words = [];
+  Object.entries(invertedIndex).forEach(([word, positions]) => {
+    if (!Array.isArray(positions)) return;
+    positions.forEach((position) => {
+      if (Number.isInteger(position)) words[position] = word;
+    });
+  });
+  return cleanCrossrefText(words.filter(Boolean).join(" "));
+}
+
+async function fetchOpenAlexAbstractByDoi(doi) {
+  const normalizedDoi = normalizeDoi(doi);
+  if (!normalizedDoi) return "";
+  try {
+    const response = await fetch(`https://api.openalex.org/works/doi:${encodeURIComponent(normalizedDoi)}`);
+    if (!response.ok) return "";
+    const data = await response.json();
+    return reconstructOpenAlexAbstract(data.abstract_inverted_index);
+  } catch {
+    return "";
   }
-  if (text.includes("squeezing-enhanced") || text.includes("squeezing")) {
-    return "把压缩态资源引入奇异点传感，强调在量子噪声受限场景下提升测量灵敏度，而不只是依赖本征值分裂放大。";
+}
+
+async function enrichRelatedPaperAbstracts(papers = []) {
+  await Promise.all(
+    papers.map(async (paper) => {
+      if (paper.abstract || !paper.doi) return;
+      paper.abstract = await fetchOpenAlexAbstractByDoi(paper.doi);
+    })
+  );
+  return papers;
+}
+
+function innovationForRelatedPaper(title, abstract = "") {
+  const titleText = cleanCrossrefText(title).toLowerCase();
+  const abstractText = cleanCrossrefText(abstract).toLowerCase();
+  const text = `${titleText} ${abstractText}`;
+  const hasAbstract = abstractText.length > 80;
+
+  if (text.includes("higher-order spectral splitting") || text.includes("second-order exceptional point")) {
+    return hasAbstract
+      ? "摘要聚焦二阶奇异点附近可调的高阶谱分裂，把微扰响应从普通频移扩展为可设计的分裂阶数；适合作为高阶 EP 读出和增强传感标定的参考。"
+      : "围绕二阶奇异点附近的高阶谱分裂展开，突出可调谱响应与增强传感之间的关系，可作为高阶 EP 读出机制的参考。";
+  }
+  if (text.includes("squeezing-enhanced") || text.includes("squeezing") || text.includes("squeezed-state")) {
+    return hasAbstract
+      ? "摘要把压缩态资源与开放系统 EP 统一起来，强调在参数振荡阈值附近通过压低量子噪声并获得四次标度灵敏度，而不只是依赖本征值分裂放大。"
+      : "把压缩态资源引入奇异点传感，强调在量子噪声受限场景下提升测量灵敏度，而不只是依赖本征值分裂放大。";
   }
   if (text.includes("transmission peak degeneracies") || text.includes("transmission peak")) {
-    return "区分奇异点与传输峰简并对非厄米传感的作用，适合用来检查实验中峰值响应是否真正来自 EP 机制。";
+    return hasAbstract
+      ? "摘要系统比较传输峰简并与真正 EP 的传感收益，强调前者可产生平方根频率分裂且避免本征基坍缩带来的噪声放大；适合做 EP 机制判别与对照设计。"
+      : "区分奇异点与传输峰简并对非厄米传感的作用，适合用来检查实验中峰值响应是否真正来自 EP 机制。";
   }
   if (text.includes("photonic time crystals")) {
-    return "利用光子时间晶体中的奇异点动力学实现光学传感增强，为时变光子系统中的 EP 调控提供了新平台。";
+    return "摘要围绕光子时间晶体中的时变非厄米动力学展开，利用奇异点附近的模耦合和谱响应实现传感增强，为动态光子平台提供 EP 调控路径。";
   }
-  if (text.includes("standard quantum limit")) {
-    return "讨论奇异点传感突破标准量子极限的条件，强调量子噪声与非厄米放大机制之间的边界。";
+  if (text.includes("standard quantum limit") || text.includes("quantum fisher") || text.includes("fisher information")) {
+    return "摘要从量子估计界限或 Fisher 信息角度评估 EP 传感，重点不只是响应放大，而是把噪声、可测精度和标准量子极限放进同一套判据。";
   }
-  if (text.includes("phase sensing")) {
-    return "聚焦奇异点相位传感中的信噪比提升，可用于比较 EP 增强和实际噪声读出之间的收益。";
+  if (text.includes("phase sensing") || (text.includes("phase") && text.includes("sensor"))) {
+    return "摘要把目标信息编码在相位扰动中，并用 EP 附近的谱响应增强弱信号读出；适合比较外置传感单元与主谐振系统分离后的稳定性收益。";
   }
   if (text.includes("jacobian exceptional point")) {
     return "从 Jacobian 奇异点角度重构传感灵敏度，提供了不同于传统哈密顿量 EP 的响应设计思路。";
@@ -926,8 +987,13 @@ function innovationForRelatedPaper(title) {
   if (text.includes("rotation sensing")) {
     return "面向旋转传感的奇异点增强方案，重点在稳健性和实频分裂读出，对陀螺类系统有参考价值。";
   }
-  if (text.includes("refractive index")) {
-    return "将非厄米奇异点用于折射率传感与多路复用读出，适合与无线/电路 EP 传感做跨平台比较。";
+  if (text.includes("refractive index") || text.includes("metasurface") || text.includes("biosensing")) {
+    return "摘要面向折射率、超表面或生物传感读出，把非厄米谱奇异性转化为可观测峰位/线形变化，适合与电路和无线 EP 传感做跨平台比较。";
+  }
+  if (text.includes("thermometry") || text.includes("temperature") || text.includes("piezoelectric")) {
+    return hasAbstract
+      ? "摘要把反宇称-时间对称体系中的 EP 响应用于压电热测温，重点是把温度扰动转化为更敏感的频谱/电学读出，可作为非光学 EP 传感平台参考。"
+      : "面向压电热测温或温度传感的 EP 增强方案，适合与电路非厄米传感中的读出量和稳定性进行横向比较。";
   }
   if (
     text.includes("gain-free") ||
@@ -935,16 +1001,30 @@ function innovationForRelatedPaper(title) {
     text.includes("pt-symmetric") ||
     text.includes("parity-time")
   ) {
-    return "突出无增益或 PT-like 相干增强路线，可用于比较非厄米传感中的噪声、稳定性与实验可实现性。";
+    return hasAbstract
+      ? "摘要提出无传统增益-损耗平衡的 PT-like 相干增强方案，并把最佳传感区间与相干参数相位联系起来；可用于比较非厄米传感中的噪声、稳定性与可实现性。"
+      : "突出无增益或 PT-like 相干增强路线，可用于比较非厄米传感中的噪声、稳定性与实验可实现性。";
   }
   if (text.includes("random matrix")) {
-    return "从非厄米谱统计角度刻画普适类，可为奇异点附近噪声放大与谱响应建模提供理论背景。";
+    return hasAbstract
+      ? "摘要解析和数值比较非厄米随机矩阵边缘统计的间距比与近邻分布，提供谱统计普适类基准，可辅助建模 EP 附近噪声放大与谱响应。"
+      : "从非厄米谱统计角度刻画普适类，可为奇异点附近噪声放大与谱响应建模提供理论背景。";
   }
   if (text.includes("simulation")) {
-    return "提供非厄米动力学和特殊函数的模拟路径，有助于把抽象非厄米模型转化为可计算、可验证的系统。";
+    return hasAbstract
+      ? "摘要提出轮廓矩阵分解来模拟非厄米矩阵函数和动力学，以受控截断误差处理不可对角化矩阵；有助于把抽象非厄米模型转化为可计算系统。"
+      : "提供非厄米动力学和特殊函数的模拟路径，有助于把抽象非厄米模型转化为可计算、可验证的系统。";
+  }
+  if (text.includes("signal-to-noise") || text.includes("snr") || text.includes("noise amplification")) {
+    return "摘要把信噪比、噪声放大和谱响应放在同一框架中讨论，适合用来判断 EP 增强在真实读出链路中是否仍有净收益。";
+  }
+  if (text.includes("rydberg") || text.includes("atomic electrometer") || text.includes("electric-field")) {
+    return "摘要面向原子电场计或 Rydberg 传感，把非厄米简并用于增强弱电场响应，可作为电路传感之外的精密测量参照。";
   }
   if (text.includes("sensing")) {
-    return "围绕量子或非厄米传感机制提出新的增强路径，适合与奇异点放大方案并列比较。";
+    return hasAbstract
+      ? "摘要围绕量子或非厄米传感机制给出新的增强路径，建议重点关注其噪声处理、可调参数和实际读出量，再与奇异点放大方案并列比较。"
+      : "围绕量子或非厄米传感机制提出新的增强路径，适合与奇异点放大方案并列比较。";
   }
   return "近 30 天内与非厄米、奇异点或量子传感相关，并带有可访问 PDF 的期刊论文。";
 }
@@ -977,6 +1057,7 @@ async function fetchCrossrefRelatedPapers(excludedPapers = [], days = 30) {
       const doi = normalizeDoi(item.DOI);
       const date = getCrossrefDate(item);
       const pdfUrl = getPdfUrl(item);
+      const abstract = getCrossrefAbstract(item);
       if (!title || !journal || !doi || !date || !pdfUrl) continue;
       if (isCorrectionLikeTitle(title)) continue;
       if (firstAuthorDois.includes(doi) || doi === "10.1063/5.0333910" || doi === "10.1109/lmwt.2025.3642799") {
@@ -990,8 +1071,8 @@ async function fetchCrossrefRelatedPapers(excludedPapers = [], days = 30) {
         recommendedAt: untilDate,
         doi,
         pdfUrl,
+        abstract,
         relevanceScore,
-        innovation: innovationForRelatedPaper(title),
       };
       if (hasSeenPaper(seenKeys, candidate) || !relevanceScore) continue;
       rememberPaper(seenKeys, candidate);
@@ -999,13 +1080,19 @@ async function fetchCrossrefRelatedPapers(excludedPapers = [], days = 30) {
     }
   }
 
-  return papers
+  const selectedPapers = papers
     .sort(
       (left, right) =>
         String(right.date || "").localeCompare(String(left.date || "")) ||
         (right.relevanceScore || 0) - (left.relevanceScore || 0)
     )
     .slice(0, 3);
+
+  await enrichRelatedPaperAbstracts(selectedPapers);
+  return selectedPapers.map((paper) => ({
+    ...paper,
+    innovation: innovationForRelatedPaper(paper.title, paper.abstract),
+  }));
 }
 
 function renderLatestPapers(papers, updatedAt = "", sourceLabel = "Crossref public API") {
@@ -1088,7 +1175,7 @@ async function loadLatestPapers() {
     const historyPapers = historyData.papers || [];
     indexFavoritePapers(historyPapers);
     let livePapers = await fetchCrossrefRelatedPapers(historyPapers, 30);
-    let sourceLabel = "Crossref public API · 30-day priority";
+    let sourceLabel = "Crossref API + OpenAlex abstracts · 30-day priority";
     if (!livePapers.length) {
       latestPaperGrid.innerHTML = `
         <div class="loading-state">
@@ -1097,7 +1184,7 @@ async function loadLatestPapers() {
         </div>
       `;
       livePapers = await fetchCrossrefRelatedPapers(historyPapers, 365);
-      sourceLabel = "Crossref public API · 365-day fallback";
+      sourceLabel = "Crossref API + OpenAlex abstracts · 365-day fallback";
     }
     indexFavoritePapers(livePapers);
     let storedPapers = [];
@@ -1121,7 +1208,7 @@ async function loadLatestPapers() {
     renderLatestPapers(
       merged,
       livePapers.length ? new Date().toISOString().slice(0, 10) : storedDate,
-      livePapers.length ? sourceLabel : "Crossref public API · 365-day fallback"
+      livePapers.length ? sourceLabel : "Crossref API + OpenAlex abstracts · 365-day fallback"
     );
   } catch (error) {
     console.info("Using local latest-paper fallback.", error);

@@ -10,7 +10,8 @@
       "recommendedAt": "2026-06-24",
       "doi": "10.1088/2058-9565/ae7b7e",
       "pdfUrl": "https://iopscience.iop.org/article/10.1088/2058-9565/ae7b7e/pdf",
-      "innovation": "用轮廓矩阵分解模拟非厄米特殊函数与动力学，为非厄米模型的可实现模拟与参数响应分析提供工具。"
+      "abstract": "Simulating non-Hermitian dynamics on quantum computers is often hindered by decaying success probability and unstable non-diagonalizable matrices. The paper proposes contour-based matrix decomposition as a quantum functional calculus framework for non-Hermitian matrix functions.",
+      "innovation": "摘要提出轮廓矩阵分解来模拟非厄米矩阵函数和动力学，以受控截断误差处理不可对角化矩阵；有助于把抽象非厄米模型转化为可计算系统。"
     },
     {
       "title": "Three non-Hermitian random matrix universality classes of complex edge statistics: Spacing ratios and distributions",
@@ -19,7 +20,8 @@
       "recommendedAt": "2026-06-24",
       "doi": "10.1088/1751-8121/ae777d",
       "pdfUrl": "https://iopscience.iop.org/article/10.1088/1751-8121/ae777d/pdf",
-      "innovation": "从非厄米随机矩阵边缘统计出发区分三类普适行为，可为噪声、谱统计与奇异点附近响应建模提供理论参照。"
+      "abstract": "The paper studies complex spacing ratios and nearest-neighbour spacing distributions for three generic local edge statistics in non-Hermitian random matrix symmetry classes.",
+      "innovation": "摘要解析和数值比较非厄米随机矩阵边缘统计的间距比与近邻分布，提供谱统计普适类基准，可辅助建模 EP 附近噪声放大与谱响应。"
     },
     {
       "title": "Gain-free quantum sensing via PT-like-induced coherence enhancement in cavity-magnomechanical system",
@@ -28,7 +30,8 @@
       "recommendedAt": "2026-06-24",
       "doi": "10.1088/1674-1056/ae8163",
       "pdfUrl": "https://iopscience.iop.org/article/10.1088/1674-1056/ae8163/pdf",
-      "innovation": "提出无需增益的 PT-like 相干增强量子传感机制，适合与非厄米增益-损耗方案进行噪声和可实现性比较。"
+      "abstract": "A gain-free PT-like-induced coherence enhancement quantum sensing scheme is implemented in a cavity-magnomechanical system. The optimal sensing regime is determined by the phase of coherent parameters, and the signal-to-noise ratio can be suppressed or enhanced depending on probe configuration.",
+      "innovation": "摘要提出无传统增益-损耗平衡的 PT-like 相干增强方案，并把最佳传感区间与相干参数相位联系起来；可用于比较非厄米传感中的噪声、稳定性与可实现性。"
     }
   ]
 }
