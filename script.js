@@ -688,22 +688,19 @@ function renderPaperHistory(papers, updatedAt = "") {
   historyPaperGrid.innerHTML = sourcePapers
     .map(
       (paper) => `
-        <article class="latest-paper-card">
-          <div class="card-meta">
+        <article class="history-paper-item">
+          <div class="history-paper-meta">
             <strong>${paper.date || "archived"}</strong>
             <span>${paper.journal || "Journal article"}</span>
           </div>
-          <h3>${paper.title}</h3>
-          <p>${paper.innovation}</p>
-          <div class="card-links">
-            ${
-              paper.pdfUrl
-                ? `<a href="${paper.pdfUrl}" target="_blank" rel="noreferrer">PDF ↗</a>`
-                : "<span>PDF待补</span>"
-            }
+          <div class="history-paper-copy">
+            <h3>${paper.title}</h3>
+            <p>${paper.innovation}</p>
+          </div>
+          <div class="history-paper-actions">
             ${
               paper.doi
-                ? `<a href="https://doi.org/${paper.doi}" target="_blank" rel="noreferrer">DOI: ${paper.doi} ↗</a>`
+                ? `<a href="https://doi.org/${paper.doi}" target="_blank" rel="noreferrer">DOI ↗</a>`
                 : "<span>DOI待补</span>"
             }
           </div>

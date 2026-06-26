@@ -245,6 +245,8 @@ input {
 .eyebrow,
 .hero-strip small,
 .card-meta,
+.history-paper-meta,
+.history-paper-actions,
 .resource-card h3,
 .dataset-card h3,
 .flow-line h3,
@@ -645,6 +647,97 @@ input {
   margin-top: auto;
 }
 
+.history-paper-grid {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.history-paper-item {
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: minmax(150px, 210px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 12px 34px rgba(20, 20, 20, 0.08);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.history-paper-item:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-strong);
+  transform: translateY(-1px);
+}
+
+.history-paper-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.history-paper-meta strong {
+  color: var(--aqua);
+}
+
+.history-paper-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-paper-copy {
+  min-width: 0;
+}
+
+.history-paper-copy h3 {
+  margin: 0;
+  font-size: 1.03rem;
+  line-height: 1.35;
+}
+
+.history-paper-copy p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.history-paper-actions {
+  justify-self: end;
+}
+
+.history-paper-actions a,
+.history-paper-actions span {
+  min-width: 62px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--aqua);
+  font-size: 0.88rem;
+  font-weight: 800;
+  padding: 0 12px;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.history-paper-actions a:hover {
+  color: var(--coral);
+  border-color: var(--line-strong);
+  background: rgba(127, 127, 127, 0.08);
+}
+
+.history-paper-actions span {
+  color: var(--muted);
+}
+
 .latest-note {
   grid-column: 1 / -1;
   margin: 2px 0 0;
@@ -986,6 +1079,16 @@ input {
   .latest-paper-grid,
   .portal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .history-paper-item {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 12px;
+  }
+
+  .history-paper-actions {
+    justify-self: start;
   }
 
   .dataset-card:first-child {
