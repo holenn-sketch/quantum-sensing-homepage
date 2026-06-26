@@ -1,0 +1,31 @@
+{
+  "updatedAt": "2026-06-24",
+  "source": "Crossref public API",
+  "note": "历史推荐归档。近月相关论文会排除这里已有的 DOI 与规范化标题，避免跨日期重复推荐。",
+  "papers": [
+    {
+      "title": "Quantum simulation of non-Hermitian special functions and dynamics via contour-based matrix decomposition",
+      "journal": "Quantum Science and Technology",
+      "date": "2026-06-24",
+      "doi": "10.1088/2058-9565/ae7b7e",
+      "pdfUrl": "https://iopscience.iop.org/article/10.1088/2058-9565/ae7b7e/pdf",
+      "innovation": "用轮廓矩阵分解模拟非厄米特殊函数与动力学，为非厄米模型的可实现模拟与参数响应分析提供工具。"
+    },
+    {
+      "title": "Three non-Hermitian random matrix universality classes of complex edge statistics: Spacing ratios and distributions",
+      "journal": "Journal of Physics A: Mathematical and Theoretical",
+      "date": "2026-06-23",
+      "doi": "10.1088/1751-8121/ae777d",
+      "pdfUrl": "https://iopscience.iop.org/article/10.1088/1751-8121/ae777d/pdf",
+      "innovation": "从非厄米随机矩阵边缘统计出发区分三类普适行为，可为噪声、谱统计与奇异点附近响应建模提供理论参照。"
+    },
+    {
+      "title": "Gain-free quantum sensing via PT-like-induced coherence enhancement in cavity-magnomechanical system",
+      "journal": "Chinese Physics B",
+      "date": "2026-06-24",
+      "doi": "10.1088/1674-1056/ae8163",
+      "pdfUrl": "https://iopscience.iop.org/article/10.1088/1674-1056/ae8163/pdf",
+      "innovation": "提出无需增益的 PT-like 相干增强量子传感机制，适合与非厄米增益-损耗方案进行噪声和可实现性比较。"
+    }
+  ]
+}

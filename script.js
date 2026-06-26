@@ -95,7 +95,7 @@ const datasets = [
   },
 ];
 
-const latestPapersFallback = [
+const paperHistoryFallback = [
   {
     title: "Quantum simulation of non-Hermitian special functions and dynamics via contour-based matrix decomposition",
     journal: "Quantum Science and Technology",
@@ -125,6 +125,8 @@ const latestPapersFallback = [
       "提出无需增益的 PT-like 相干增强量子传感机制，适合与非厄米增益-损耗方案进行噪声和可实现性比较。",
   },
 ];
+
+const latestPapersFallback = [];
 // EDITABLE CONTENT END.
 
 const root = document.documentElement;
@@ -135,6 +137,7 @@ const filterGroup = document.querySelector("[data-filter-group]");
 const paperGrid = document.querySelector("[data-paper-grid]");
 const datasetGrid = document.querySelector("[data-dataset-grid]");
 const latestPaperGrid = document.querySelector("[data-latest-paper-grid]");
+const historyPaperGrid = document.querySelector("[data-history-paper-grid]");
 const paperCount = document.querySelector("[data-paper-count]");
 const datasetCount = document.querySelector("[data-dataset-count]");
 
@@ -471,6 +474,40 @@ function rememberPaper(seenKeys, paper) {
   getPaperDedupKeys(paper).forEach((key) => seenKeys.add(key));
 }
 
+function createPaperKeySet(papers = []) {
+  const seenKeys = new Set();
+  papers.forEach((paper) => rememberPaper(seenKeys, paper));
+  return seenKeys;
+}
+
+function filterAgainstPaperHistory(papers = [], historyPapers = []) {
+  const seenKeys = createPaperKeySet(historyPapers);
+  const filtered = [];
+  for (const paper of papers || []) {
+    if (!paper || isCorrectionLikeTitle(paper.title) || hasSeenPaper(seenKeys, paper)) continue;
+    rememberPaper(seenKeys, paper);
+    filtered.push(paper);
+  }
+  return filtered;
+}
+
+async function fetchPaperHistoryData() {
+  try {
+    const response = await fetch("./data/paper-history.json", { cache: "no-store" });
+    if (!response.ok) throw new Error(`History request failed: ${response.status}`);
+    const data = await response.json();
+    return {
+      updatedAt: data.updatedAt || "",
+      papers: data.papers || paperHistoryFallback,
+    };
+  } catch {
+    return {
+      updatedAt: "2026-06-24",
+      papers: paperHistoryFallback,
+    };
+  }
+}
+
 function getCrossrefDate(item) {
   const parts =
     item.published?.["date-parts"]?.[0] ||
@@ -532,10 +569,10 @@ function innovationForRelatedPaper(title) {
   return "近 30 天内与非厄米、奇异点或量子传感相关，并带有可访问 PDF 的期刊论文。";
 }
 
-async function fetchCrossrefRelatedPapers() {
+async function fetchCrossrefRelatedPapers(excludedPapers = []) {
   const fromDate = getDateDaysAgo(30);
   const untilDate = new Date().toISOString().slice(0, 10);
-  const seenKeys = new Set();
+  const seenKeys = createPaperKeySet(excludedPapers);
   const papers = [];
 
   for (const query of relatedPaperQueries) {
@@ -582,6 +619,17 @@ async function fetchCrossrefRelatedPapers() {
 
 function renderLatestPapers(papers, updatedAt = "") {
   if (!latestPaperGrid) return;
+
+  if (!papers.length) {
+    latestPaperGrid.innerHTML = `
+      <div class="empty-paper-state">
+        <span aria-hidden="true"></span>
+        <p>已排除历史推荐，暂未找到新的近月开放 PDF 论文。</p>
+        <a href="./history.html">查看历史论文</a>
+      </div>
+    `;
+    return;
+  }
 
   latestPaperGrid.innerHTML = papers
     .slice(0, 3)
@@ -633,6 +681,45 @@ function mergeLatestPapers(...groups) {
   return merged;
 }
 
+function renderPaperHistory(papers, updatedAt = "") {
+  if (!historyPaperGrid) return;
+
+  const sourcePapers = papers.length ? papers : paperHistoryFallback;
+  historyPaperGrid.innerHTML = sourcePapers
+    .map(
+      (paper) => `
+        <article class="latest-paper-card">
+          <div class="card-meta">
+            <strong>${paper.date || "archived"}</strong>
+            <span>${paper.journal || "Journal article"}</span>
+          </div>
+          <h3>${paper.title}</h3>
+          <p>${paper.innovation}</p>
+          <div class="card-links">
+            ${
+              paper.pdfUrl
+                ? `<a href="${paper.pdfUrl}" target="_blank" rel="noreferrer">PDF ↗</a>`
+                : "<span>PDF待补</span>"
+            }
+            ${
+              paper.doi
+                ? `<a href="https://doi.org/${paper.doi}" target="_blank" rel="noreferrer">DOI: ${paper.doi} ↗</a>`
+                : "<span>DOI待补</span>"
+            }
+          </div>
+        </article>
+      `
+    )
+    .join("");
+
+  if (updatedAt) {
+    historyPaperGrid.insertAdjacentHTML(
+      "beforeend",
+      `<p class="latest-note">Archived through: ${updatedAt}</p>`
+    );
+  }
+}
+
 async function loadLatestPapers() {
   if (!latestPaperGrid) return;
 
@@ -644,25 +731,42 @@ async function loadLatestPapers() {
   `;
 
   try {
-    const livePapers = await fetchCrossrefRelatedPapers();
+    const historyData = await fetchPaperHistoryData();
+    const historyPapers = historyData.papers || [];
+    const livePapers = await fetchCrossrefRelatedPapers(historyPapers);
     let storedPapers = [];
     let storedDate = "";
     try {
       const response = await fetch("./data/latest-papers.json", { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
-        storedPapers = data.papers || [];
+        storedPapers = filterAgainstPaperHistory(data.papers || [], historyPapers);
         storedDate = data.updatedAt || "";
       }
     } catch {
       storedPapers = [];
     }
-    const merged = mergeLatestPapers(livePapers, storedPapers, latestPapersFallback);
+    const latestFallback = filterAgainstPaperHistory(latestPapersFallback, historyPapers);
+    const merged = mergeLatestPapers(livePapers, storedPapers, latestFallback);
     renderLatestPapers(merged, livePapers.length ? new Date().toISOString().slice(0, 10) : storedDate);
   } catch (error) {
     console.info("Using local latest-paper fallback.", error);
     renderLatestPapers(latestPapersFallback);
   }
+}
+
+async function loadPaperHistoryPage() {
+  if (!historyPaperGrid) return;
+
+  historyPaperGrid.innerHTML = `
+    <div class="loading-state">
+      <span aria-hidden="true"></span>
+      正在读取历史论文
+    </div>
+  `;
+
+  const historyData = await fetchPaperHistoryData();
+  renderPaperHistory(historyData.papers || [], historyData.updatedAt);
 }
 
 function initInteractions() {
@@ -888,6 +992,7 @@ initTheme();
 initializePapers();
 renderDatasets();
 loadLatestPapers();
+loadPaperHistoryPage();
 initInteractions();
 initReveal();
 initFieldCanvas();
