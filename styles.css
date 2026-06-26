@@ -658,12 +658,17 @@ input {
 }
 
 .favorite-directory-head {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   gap: 18px;
   align-items: flex-start;
+  border: 0;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
 }
 
 .favorite-directory-head .eyebrow {
@@ -682,12 +687,22 @@ input {
   font-weight: 800;
   font-style: italic;
   white-space: nowrap;
+  transition: color 160ms ease;
+}
+
+.favorite-directory-head:hover > span {
+  color: var(--aqua);
+}
+
+.favorite-directory-head[aria-expanded="false"] {
+  padding-bottom: 0;
 }
 
 .favorite-directory-list {
   display: grid;
   gap: 10px;
   padding-top: 14px;
+  border-top: 1px solid var(--line);
 }
 
 .favorite-directory-item {

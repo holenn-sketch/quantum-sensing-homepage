@@ -146,6 +146,7 @@ const paperCount = document.querySelector("[data-paper-count]");
 const datasetCount = document.querySelector("[data-dataset-count]");
 const favoriteStorageKey = "archive-favorite-papers";
 const favoritePaperStorageKey = "archive-favorite-paper-items";
+const favoriteDirectoryOpenKey = "archive-favorite-directory-open";
 
 let activeFilter = "all";
 let searchTerm = "";
@@ -200,6 +201,22 @@ function setStoredFavoritePapers(papersByKey) {
     localStorage.setItem(favoritePaperStorageKey, JSON.stringify(Object.fromEntries(papersByKey)));
   } catch {
     // Metadata improves the directory only; favorites still work without it.
+  }
+}
+
+function isFavoriteDirectoryOpen() {
+  try {
+    return localStorage.getItem(favoriteDirectoryOpenKey) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function setFavoriteDirectoryOpen(isOpen) {
+  try {
+    localStorage.setItem(favoriteDirectoryOpenKey, isOpen ? "true" : "false");
+  } catch {
+    // Collapsed state is cosmetic.
   }
 }
 
@@ -453,23 +470,57 @@ function renderDatasets() {
 }
 
 const relatedPaperQueries = [
-  '"non-Hermitian"',
-  '"exceptional point" sensing',
-  '"quantum sensing" "PT-like"',
+  "exceptional point enhanced optical sensing",
+  "exceptional point optical sensing",
+  "non-Hermitian sensing exceptional point",
+  "exceptional point photonic sensing",
+  "non-Hermitian quantum sensing",
+  "PT-symmetric sensing exceptional point",
 ];
 
 const relatedJournalHints = [
   "Physical Review",
+  "Physical Review Applied",
+  "Physical Review Letters",
+  "Physical Review A",
+  "Nature Electronics",
   "Quantum Science and Technology",
   "Journal of Physics A",
   "Chinese Physics B",
   "Applied Physics Letters",
+  "ACS Photonics",
+  "Science Advances",
   "Optics Letters",
   "Optics Express",
   "Photonics Research",
+  "Physica Scripta",
   "Nanophotonics",
   "Scientific Reports",
   "Sensors",
+];
+
+const relatedPhysicsTerms = [
+  "non-hermitian",
+  "nonhermitian",
+  "exceptional point",
+  "exceptional-point",
+  "pt-symmetric",
+  "pt symmetric",
+  "parity-time",
+  "spectral splitting",
+  "liouvillian",
+];
+
+const relatedSensingTerms = [
+  "sensing",
+  "sensor",
+  "metrology",
+  "electrometer",
+  "rotation",
+  "mass sensor",
+  "refractive index",
+  "signal-to-noise",
+  "snr",
 ];
 
 function getDateDaysAgo(days) {
@@ -739,19 +790,27 @@ function createFavoriteDirectoryItem(paper) {
 function renderFavoriteDirectory() {
   if (!favoriteDirectory) return;
   const favorites = getFavoriteDirectoryPapers();
+  const isOpen = isFavoriteDirectoryOpen();
 
   favoriteDirectory.innerHTML = `
-    <div class="favorite-directory-head">
+    <button
+      class="favorite-directory-head"
+      type="button"
+      data-favorite-directory-toggle
+      aria-expanded="${isOpen ? "true" : "false"}"
+    >
       <div>
         <p class="eyebrow">Saved Papers</p>
         <h3>收藏论文目录</h3>
       </div>
-      <span>${favorites.length} 篇</span>
-    </div>
+      <span>${favorites.length} 篇 · ${isOpen ? "收起" : "展开"}</span>
+    </button>
     ${
-      favorites.length
-        ? `<div class="favorite-directory-list">${favorites.map(createFavoriteDirectoryItem).join("")}</div>`
-        : `<p class="favorite-directory-empty">点击论文旁的“收藏”后，会在这里形成可快速回看的目录。</p>`
+      isOpen
+        ? favorites.length
+          ? `<div class="favorite-directory-list">${favorites.map(createFavoriteDirectoryItem).join("")}</div>`
+          : `<p class="favorite-directory-empty">点击论文旁的“收藏”后，会在这里形成可快速回看的目录。</p>`
+        : ""
     }
   `;
 }
@@ -808,25 +867,37 @@ function getPdfUrl(item) {
     const url = String(link.URL || "");
     return type.includes("pdf") || /\.pdf(\?|$)/i.test(url);
   });
-  return pdf?.URL || "";
+  return pdf?.URL || inferPdfUrl(item);
 }
 
-function isRelatedCrossrefItem(item) {
+function inferPdfUrl(item) {
+  const doi = normalizeDoi(item.DOI);
+  if (!doi) return "";
+  if (doi.startsWith("10.1103/")) return `https://link.aps.org/pdf/${doi}`;
+  if (doi.startsWith("10.1088/")) return `https://iopscience.iop.org/article/${doi}/pdf`;
+  if (doi.startsWith("10.1038/")) return `https://www.nature.com/articles/${doi.split("/")[1]}.pdf`;
+  if (doi.startsWith("10.1126/")) return `https://www.science.org/doi/pdf/${doi}`;
+  if (doi.startsWith("10.1021/")) return `https://pubs.acs.org/doi/pdf/${doi}`;
+  if (doi.startsWith("10.1007/")) return `https://link.springer.com/content/pdf/${doi}.pdf`;
+  if (doi.startsWith("10.3390/")) {
+    return `https://www.mdpi.com/resolver?pii=${doi.split("/")[1]}&type=check_update&version=1`;
+  }
+  return "";
+}
+
+function getRelatedPaperScore(item) {
   const text = `${cleanCrossrefText(item.title?.[0])} ${cleanCrossrefText(
     item["container-title"]?.[0]
   )}`.toLowerCase();
-  const hasTopic =
-    text.includes("non-hermitian") ||
-    text.includes("nonhermitian") ||
-    text.includes("exceptional point") ||
-    text.includes("quantum sensing") ||
-    text.includes("pt-like") ||
-    text.includes("pt-symmetric") ||
-    text.includes("parity-time") ||
-    text.includes("spectral splitting") ||
-    text.includes("liouvillian");
-  const hasJournalHint = relatedJournalHints.some((journal) => text.includes(journal.toLowerCase()));
-  return hasTopic && hasJournalHint;
+  const physicsScore = relatedPhysicsTerms.filter((term) => text.includes(term)).length;
+  const sensingScore = relatedSensingTerms.filter((term) => text.includes(term)).length;
+  const journalBoost = relatedJournalHints.some((journal) => text.includes(journal.toLowerCase())) ? 1 : 0;
+  if (!physicsScore || !sensingScore) return 0;
+  return physicsScore * 4 + sensingScore * 2 + journalBoost;
+}
+
+function isRelatedCrossrefItem(item) {
+  return getRelatedPaperScore(item) > 0;
 }
 
 function innovationForRelatedPaper(title) {
@@ -856,20 +927,23 @@ async function fetchCrossrefRelatedPapers(excludedPapers = [], days = 30) {
   const untilDate = new Date().toISOString().slice(0, 10);
   const seenKeys = createPaperKeySet(excludedPapers);
   const papers = [];
-
-  for (const query of relatedPaperQueries) {
+  const requests = relatedPaperQueries.map((query) => {
     const params = new URLSearchParams({
-      "query.title": query,
+      "query.bibliographic": query,
       filter: `type:journal-article,from-pub-date:${fromDate},until-pub-date:${untilDate}`,
-      sort: "published",
+      sort: "score",
       order: "desc",
-      rows: "60",
+      rows: "18",
       mailto: "holenn@example.com",
     });
-    const response = await fetch(`https://api.crossref.org/works?${params}`);
-    if (!response.ok) continue;
-    const data = await response.json();
+    return fetch(`https://api.crossref.org/works?${params}`)
+      .then((response) => (response.ok ? response.json() : { message: { items: [] } }))
+      .catch(() => ({ message: { items: [] } }));
+  });
 
+  const results = await Promise.all(requests);
+
+  for (const data of results) {
     for (const item of data.message?.items || []) {
       const title = cleanCrossrefText(item.title?.[0]);
       const journal = cleanCrossrefText(item["container-title"]?.[0]);
@@ -881,6 +955,7 @@ async function fetchCrossrefRelatedPapers(excludedPapers = [], days = 30) {
       if (firstAuthorDois.includes(doi) || doi === "10.1063/5.0333910" || doi === "10.1109/lmwt.2025.3642799") {
         continue;
       }
+      const relevanceScore = getRelatedPaperScore(item);
       const candidate = {
         title,
         journal,
@@ -888,16 +963,21 @@ async function fetchCrossrefRelatedPapers(excludedPapers = [], days = 30) {
         recommendedAt: untilDate,
         doi,
         pdfUrl,
+        relevanceScore,
         innovation: innovationForRelatedPaper(title),
       };
-      if (hasSeenPaper(seenKeys, candidate) || !isRelatedCrossrefItem(item)) continue;
+      if (hasSeenPaper(seenKeys, candidate) || !relevanceScore) continue;
       rememberPaper(seenKeys, candidate);
       papers.push(candidate);
     }
   }
 
   return papers
-    .sort((left, right) => String(right.date || "").localeCompare(String(left.date || "")))
+    .sort(
+      (left, right) =>
+        String(right.date || "").localeCompare(String(left.date || "")) ||
+        (right.relevanceScore || 0) - (left.relevanceScore || 0)
+    )
     .slice(0, 3);
 }
 
@@ -1076,6 +1156,13 @@ function initInteractions() {
   }
 
   document.addEventListener("click", (event) => {
+    const directoryToggle = event.target.closest("[data-favorite-directory-toggle]");
+    if (directoryToggle) {
+      setFavoriteDirectoryOpen(directoryToggle.getAttribute("aria-expanded") !== "true");
+      renderFavoriteDirectory();
+      return;
+    }
+
     const button = event.target.closest("[data-favorite-paper]");
     if (!button) return;
     toggleFavoritePaper(button);
