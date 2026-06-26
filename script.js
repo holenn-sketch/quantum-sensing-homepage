@@ -902,6 +902,33 @@ function isRelatedCrossrefItem(item) {
 
 function innovationForRelatedPaper(title) {
   const text = title.toLowerCase();
+  if (text.includes("higher-order spectral splitting") || text.includes("second-order exceptional point")) {
+    return "围绕二阶奇异点附近的高阶谱分裂展开，突出可调谱响应与增强传感之间的关系，可作为高阶 EP 读出机制的参考。";
+  }
+  if (text.includes("squeezing-enhanced") || text.includes("squeezing")) {
+    return "把压缩态资源引入奇异点传感，强调在量子噪声受限场景下提升测量灵敏度，而不只是依赖本征值分裂放大。";
+  }
+  if (text.includes("transmission peak degeneracies") || text.includes("transmission peak")) {
+    return "区分奇异点与传输峰简并对非厄米传感的作用，适合用来检查实验中峰值响应是否真正来自 EP 机制。";
+  }
+  if (text.includes("photonic time crystals")) {
+    return "利用光子时间晶体中的奇异点动力学实现光学传感增强，为时变光子系统中的 EP 调控提供了新平台。";
+  }
+  if (text.includes("standard quantum limit")) {
+    return "讨论奇异点传感突破标准量子极限的条件，强调量子噪声与非厄米放大机制之间的边界。";
+  }
+  if (text.includes("phase sensing")) {
+    return "聚焦奇异点相位传感中的信噪比提升，可用于比较 EP 增强和实际噪声读出之间的收益。";
+  }
+  if (text.includes("jacobian exceptional point")) {
+    return "从 Jacobian 奇异点角度重构传感灵敏度，提供了不同于传统哈密顿量 EP 的响应设计思路。";
+  }
+  if (text.includes("rotation sensing")) {
+    return "面向旋转传感的奇异点增强方案，重点在稳健性和实频分裂读出，对陀螺类系统有参考价值。";
+  }
+  if (text.includes("refractive index")) {
+    return "将非厄米奇异点用于折射率传感与多路复用读出，适合与无线/电路 EP 传感做跨平台比较。";
+  }
   if (
     text.includes("gain-free") ||
     text.includes("pt-like") ||
