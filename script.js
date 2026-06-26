@@ -851,8 +851,8 @@ function innovationForRelatedPaper(title) {
   return "近 30 天内与非厄米、奇异点或量子传感相关，并带有可访问 PDF 的期刊论文。";
 }
 
-async function fetchCrossrefRelatedPapers(excludedPapers = []) {
-  const fromDate = getDateDaysAgo(30);
+async function fetchCrossrefRelatedPapers(excludedPapers = [], days = 30) {
+  const fromDate = getDateDaysAgo(days);
   const untilDate = new Date().toISOString().slice(0, 10);
   const seenKeys = createPaperKeySet(excludedPapers);
   const papers = [];
@@ -893,21 +893,22 @@ async function fetchCrossrefRelatedPapers(excludedPapers = []) {
       if (hasSeenPaper(seenKeys, candidate) || !isRelatedCrossrefItem(item)) continue;
       rememberPaper(seenKeys, candidate);
       papers.push(candidate);
-      if (papers.length >= 3) return papers;
     }
   }
 
-  return papers;
+  return papers
+    .sort((left, right) => String(right.date || "").localeCompare(String(left.date || "")))
+    .slice(0, 3);
 }
 
-function renderLatestPapers(papers, updatedAt = "") {
+function renderLatestPapers(papers, updatedAt = "", sourceLabel = "Crossref public API") {
   if (!latestPaperGrid) return;
 
   if (!papers.length) {
     latestPaperGrid.innerHTML = `
       <div class="empty-paper-state">
         <span aria-hidden="true"></span>
-        <p>已排除历史推荐，暂未找到新的近月开放 PDF 论文。</p>
+        <p>已排除历史推荐，近 1 年内暂未找到新的开放 PDF 论文。</p>
         <a href="./history.html">查看历史论文</a>
       </div>
     `;
@@ -927,7 +928,7 @@ function renderLatestPapers(papers, updatedAt = "") {
   if (updatedAt) {
     latestPaperGrid.insertAdjacentHTML(
       "beforeend",
-      `<p class="latest-note">Last update: ${updatedAt} · Source: Crossref public API</p>`
+      `<p class="latest-note">Last update: ${updatedAt} · Source: ${sourceLabel}</p>`
     );
   }
   renderFavoriteDirectory();
@@ -971,7 +972,7 @@ async function loadLatestPapers() {
   latestPaperGrid.innerHTML = `
     <div class="loading-state">
       <span aria-hidden="true"></span>
-      正在筛选近 30 天可访问 PDF 论文
+      正在优先筛选近 30 天开放 PDF 论文
     </div>
   `;
 
@@ -979,7 +980,18 @@ async function loadLatestPapers() {
     const historyData = await fetchPaperHistoryData();
     const historyPapers = historyData.papers || [];
     indexFavoritePapers(historyPapers);
-    const livePapers = await fetchCrossrefRelatedPapers(historyPapers);
+    let livePapers = await fetchCrossrefRelatedPapers(historyPapers, 30);
+    let sourceLabel = "Crossref public API · 30-day priority";
+    if (!livePapers.length) {
+      latestPaperGrid.innerHTML = `
+        <div class="loading-state">
+          <span aria-hidden="true"></span>
+          近 30 天暂无新候选，正在放宽到近 1 年
+        </div>
+      `;
+      livePapers = await fetchCrossrefRelatedPapers(historyPapers, 365);
+      sourceLabel = "Crossref public API · 365-day fallback";
+    }
     indexFavoritePapers(livePapers);
     let storedPapers = [];
     let storedDate = "";
@@ -999,7 +1011,11 @@ async function loadLatestPapers() {
     }
     const latestFallback = filterAgainstPaperHistory(latestPapersFallback, historyPapers);
     const merged = mergeLatestPapers(livePapers, storedPapers, latestFallback);
-    renderLatestPapers(merged, livePapers.length ? new Date().toISOString().slice(0, 10) : storedDate);
+    renderLatestPapers(
+      merged,
+      livePapers.length ? new Date().toISOString().slice(0, 10) : storedDate,
+      livePapers.length ? sourceLabel : "Crossref public API · 365-day fallback"
+    );
   } catch (error) {
     console.info("Using local latest-paper fallback.", error);
     renderLatestPapers(latestPapersFallback);

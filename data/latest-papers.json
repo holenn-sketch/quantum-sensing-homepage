@@ -1,6 +1,6 @@
 {
   "updatedAt": "2026-06-26",
   "source": "Crossref public API",
-  "note": "当前近月候选已排除 data/paper-history.json 中的历史 DOI 与规范化标题。若实时 Crossref 未返回新的合格开放 PDF 论文，则页面显示空状态而不是重复历史论文。",
+  "note": "当前候选已排除 data/paper-history.json 中的历史 DOI 与规范化标题。页面会优先筛选近 30 天论文；若为空，则自动放宽到近 1 年并按发表日期优先推荐更新论文。",
   "papers": []
 }
