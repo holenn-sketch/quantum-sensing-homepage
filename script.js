@@ -141,12 +141,15 @@ const paperGrid = document.querySelector("[data-paper-grid]");
 const datasetGrid = document.querySelector("[data-dataset-grid]");
 const latestPaperGrid = document.querySelector("[data-latest-paper-grid]");
 const historyPaperGrid = document.querySelector("[data-history-paper-grid]");
+const favoriteDirectory = document.querySelector("[data-favorite-directory]");
 const paperCount = document.querySelector("[data-paper-count]");
 const datasetCount = document.querySelector("[data-dataset-count]");
 const favoriteStorageKey = "archive-favorite-papers";
+const favoritePaperStorageKey = "archive-favorite-paper-items";
 
 let activeFilter = "all";
 let searchTerm = "";
+const favoritePaperCatalog = new Map();
 
 function getStoredTheme() {
   try {
@@ -178,6 +181,25 @@ function setFavoriteKeys(keys) {
     localStorage.setItem(favoriteStorageKey, JSON.stringify([...keys]));
   } catch {
     // Favorites are a local convenience; ignore unavailable storage.
+  }
+}
+
+function getStoredFavoritePapers() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(favoritePaperStorageKey) || "{}");
+    return new Map(
+      Object.entries(stored).filter(([, paper]) => paper && typeof paper === "object" && paper.title)
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+function setStoredFavoritePapers(papersByKey) {
+  try {
+    localStorage.setItem(favoritePaperStorageKey, JSON.stringify(Object.fromEntries(papersByKey)));
+  } catch {
+    // Metadata improves the directory only; favorites still work without it.
   }
 }
 
@@ -503,6 +525,28 @@ function getPaperFavoriteKey(paper = {}) {
   return normalizeDoi(paper.doi) || normalizePaperTitle(paper.title);
 }
 
+function getFavoritePaperPayload(paper = {}) {
+  return {
+    title: cleanCrossrefText(paper.title || ""),
+    journal: cleanCrossrefText(paper.journal || paper.venue || ""),
+    date: paper.date || paper.year || "",
+    recommendedAt: getRecommendationDate(paper),
+    doi: normalizeDoi(paper.doi),
+    pdfUrl: paper.pdfUrl || "",
+    innovation: paper.innovation || paper.summary || "",
+  };
+}
+
+function indexFavoritePaper(paper = {}) {
+  const key = getPaperFavoriteKey(paper);
+  if (!key) return;
+  favoritePaperCatalog.set(key, getFavoritePaperPayload(paper));
+}
+
+function indexFavoritePapers(papers = []) {
+  papers.forEach(indexFavoritePaper);
+}
+
 function isPaperFavorited(key) {
   return key ? getFavoriteKeys().has(key) : false;
 }
@@ -510,6 +554,7 @@ function isPaperFavorited(key) {
 function createFavoriteButton(paper = {}) {
   const key = getPaperFavoriteKey(paper);
   if (!key) return "";
+  const payload = encodeURIComponent(JSON.stringify(getFavoritePaperPayload(paper)));
   const isSaved = isPaperFavorited(key);
   const label = isSaved ? "已收藏" : "收藏";
   return `
@@ -518,6 +563,7 @@ function createFavoriteButton(paper = {}) {
       type="button"
       data-favorite-paper
       data-paper-key="${encodeURIComponent(key)}"
+      data-paper-payload="${payload}"
       aria-pressed="${isSaved ? "true" : "false"}"
       aria-label="${isSaved ? "取消收藏论文" : "收藏论文"}"
     >
@@ -543,11 +589,28 @@ function toggleFavoritePaper(button) {
   const key = decodeURIComponent(button.dataset.paperKey || "");
   if (!key) return;
   const keys = getFavoriteKeys();
+  const storedPapers = getStoredFavoritePapers();
   const isSaved = keys.has(key);
-  if (isSaved) keys.delete(key);
-  else keys.add(key);
+  if (isSaved) {
+    keys.delete(key);
+    storedPapers.delete(key);
+  } else {
+    keys.add(key);
+    try {
+      const paper = JSON.parse(decodeURIComponent(button.dataset.paperPayload || ""));
+      if (paper?.title) {
+        storedPapers.set(key, paper);
+        favoritePaperCatalog.set(key, paper);
+      }
+    } catch {
+      const knownPaper = favoritePaperCatalog.get(key);
+      if (knownPaper) storedPapers.set(key, knownPaper);
+    }
+  }
   setFavoriteKeys(keys);
+  setStoredFavoritePapers(storedPapers);
   updateFavoriteButtons(key, !isSaved);
+  renderFavoriteDirectory();
 }
 
 function getRecommendationDate(paper = {}, fallback = "") {
@@ -633,6 +696,63 @@ function createRecommendationDateGroup(group, variant, renderPaper) {
         ${group.papers.map(renderPaper).join("")}
       </div>
     </section>
+  `;
+}
+
+function getFavoriteDirectoryPapers() {
+  const keys = getFavoriteKeys();
+  const storedPapers = getStoredFavoritePapers();
+  return [...keys]
+    .map((key) => {
+      const paper = favoritePaperCatalog.get(key) || storedPapers.get(key);
+      return paper ? { ...paper, favoriteKey: key } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      const left = getRecommendationDate(a) || a.date || "";
+      const right = getRecommendationDate(b) || b.date || "";
+      return right.localeCompare(left);
+    });
+}
+
+function createFavoriteDirectoryItem(paper) {
+  const recommendationDate = getRecommendationDate(paper);
+  return `
+    <article class="favorite-directory-item">
+      <div class="favorite-directory-copy">
+        <span>${recommendationDate ? `推荐 ${recommendationDate}` : "已收藏"}</span>
+        <h4>${paper.title}</h4>
+        <p>${paper.journal || "Journal article"}${paper.date ? ` · 发表 ${paper.date}` : ""}</p>
+      </div>
+      <div class="favorite-directory-actions">
+        ${createFavoriteButton(paper)}
+        ${
+          paper.doi
+            ? `<a href="https://doi.org/${paper.doi}" target="_blank" rel="noreferrer">DOI ↗</a>`
+            : "<span>DOI待补</span>"
+        }
+      </div>
+    </article>
+  `;
+}
+
+function renderFavoriteDirectory() {
+  if (!favoriteDirectory) return;
+  const favorites = getFavoriteDirectoryPapers();
+
+  favoriteDirectory.innerHTML = `
+    <div class="favorite-directory-head">
+      <div>
+        <p class="eyebrow">Saved Papers</p>
+        <h3>收藏论文目录</h3>
+      </div>
+      <span>${favorites.length} 篇</span>
+    </div>
+    ${
+      favorites.length
+        ? `<div class="favorite-directory-list">${favorites.map(createFavoriteDirectoryItem).join("")}</div>`
+        : `<p class="favorite-directory-empty">点击论文旁的“收藏”后，会在这里形成可快速回看的目录。</p>`
+    }
   `;
 }
 
@@ -791,11 +911,14 @@ function renderLatestPapers(papers, updatedAt = "") {
         <a href="./history.html">查看历史论文</a>
       </div>
     `;
+    renderFavoriteDirectory();
     return;
   }
 
+  const visiblePapers = papers.slice(0, 3);
+  indexFavoritePapers(visiblePapers);
   latestPaperGrid.innerHTML = groupPapersByRecommendationDate(
-    papers.slice(0, 3),
+    visiblePapers,
     updatedAt || getTodayString()
   )
     .map((group) => createRecommendationDateGroup(group, "latest-paper-group", createLatestPaperCard))
@@ -807,6 +930,7 @@ function renderLatestPapers(papers, updatedAt = "") {
       `<p class="latest-note">Last update: ${updatedAt} · Source: Crossref public API</p>`
     );
   }
+  renderFavoriteDirectory();
 }
 
 function mergeLatestPapers(...groups) {
@@ -827,6 +951,7 @@ function renderPaperHistory(papers, updatedAt = "") {
   if (!historyPaperGrid) return;
 
   const sourcePapers = papers.length ? papers : paperHistoryFallback;
+  indexFavoritePapers(sourcePapers);
   historyPaperGrid.innerHTML = groupPapersByRecommendationDate(sourcePapers, updatedAt || "archived")
     .map((group) => createRecommendationDateGroup(group, "history-paper-group", createHistoryPaperItem))
     .join("");
@@ -837,6 +962,7 @@ function renderPaperHistory(papers, updatedAt = "") {
       `<p class="latest-note">Archived through: ${updatedAt}</p>`
     );
   }
+  renderFavoriteDirectory();
 }
 
 async function loadLatestPapers() {
@@ -852,7 +978,9 @@ async function loadLatestPapers() {
   try {
     const historyData = await fetchPaperHistoryData();
     const historyPapers = historyData.papers || [];
+    indexFavoritePapers(historyPapers);
     const livePapers = await fetchCrossrefRelatedPapers(historyPapers);
+    indexFavoritePapers(livePapers);
     let storedPapers = [];
     let storedDate = "";
     try {
@@ -863,6 +991,7 @@ async function loadLatestPapers() {
           ...paper,
           recommendedAt: paper.recommendedAt || data.updatedAt || "",
         }));
+        indexFavoritePapers(storedPapers);
         storedDate = data.updatedAt || "";
       }
     } catch {
@@ -1119,6 +1248,7 @@ function initFieldCanvas() {
 initTheme();
 initializePapers();
 renderDatasets();
+renderFavoriteDirectory();
 loadLatestPapers();
 loadPaperHistoryPage();
 initInteractions();
